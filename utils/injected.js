@@ -6,31 +6,24 @@ export const INJECTED_JS = `(function(){
 
   function hideNav(){
     if(navHidden)return;
-
-    // Find nav container by counting SVG aria-labels
-    // Stop walking up as soon as we find it — don't go further
     var svg=document.querySelector('svg[aria-label="Home"]');
     if(!svg)return;
-
     var el=svg;
     for(var i=0;i<10;i++){
       var p=el.parentElement;
       if(!p)break;
       var r=p.getBoundingClientRect();
       var svgCount=p.querySelectorAll('svg[aria-label]').length;
-      // Nav bar: full width, short height (50-70px), 4+ svg icons
       if(r.width>=window.innerWidth*0.8&&r.height>0&&r.height<120&&svgCount>=4){
         p.style.cssText='display:none!important';
         navHidden=true;
         return;
       }
-      // Safety: never hide something taller than 120px (that's the page)
       if(r.height>120&&svgCount<4)break;
       el=p;
     }
   }
 
-  // Run on mutations but only until nav is found
   var obs=new MutationObserver(function(){
     hideNav();
     if(navHidden)obs.disconnect();
@@ -38,7 +31,6 @@ export const INJECTED_JS = `(function(){
   obs.observe(document.documentElement,{childList:true,subtree:true});
   [0,300,800,2000].forEach(function(t){setTimeout(hideNav,t);});
 
-  // Hide login/open-app bar by text — run once after load
   setTimeout(function(){
     document.querySelectorAll('a').forEach(function(a){
       var t=(a.textContent||'').trim();
@@ -56,6 +48,21 @@ export const INJECTED_JS = `(function(){
       }
     });
   },1000);
+
+  // Signal when a video starts playing — hides placeholder
+  function watchVideos(){
+    document.querySelectorAll('video').forEach(function(v){
+      if(v.__rwWatched)return;
+      v.__rwWatched=true;
+      v.addEventListener('playing',function(){
+        var rn=window.ReactNativeWebView;
+        if(rn)rn.postMessage(JSON.stringify({type:'video_playing'}));
+      });
+    });
+  }
+  new MutationObserver(function(){watchVideos();})
+    .observe(document.documentElement,{childList:true,subtree:true});
+  watchVideos();
 
   function ping(url){
     var rn=window.ReactNativeWebView;if(!rn)return;

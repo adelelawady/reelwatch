@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
   StatusBar as RNStatusBar,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { ChatBar } from "../components/ChatBar";
+import { ReelPlaceholder } from "../components/ReelPlaceholder";
 import { StatusDot } from "../components/StatusDot";
 import { ToastLayer } from "../components/ToastLayer";
 import { CONFIG } from "../constants/config";
@@ -21,13 +21,29 @@ export default function ReelScreen() {
   const webviewRef = useRef<WebView>(null);
   const [input, setInput] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [showPlaceholder, setShowPlaceholder] = useState(true);
+  const hideTimer = useRef<any>(null);
 
   const { authState, onLoggedOut, onLoginComplete } = useAuth();
   const { toasts, addToast } = useToasts();
 
+  // Hide placeholder — called from multiple places
+  const hidePlaceholder = useCallback(() => {
+    clearTimeout(hideTimer.current);
+    setShowPlaceholder(false);
+  }, []);
+
+  // Show placeholder + 4s safety fallback so it never gets stuck
+  const showPlaceholderSafe = useCallback(() => {
+    setShowPlaceholder(true);
+    clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setShowPlaceholder(false), 6000);
+  }, []);
+
   const onSyncMessage = useCallback(
     (msg: any) => {
       if (msg.type === "url_change") {
+        showPlaceholderSafe(); // show while loading
         webviewRef.current?.injectJavaScript(
           `window.location.href = '${msg.url}'; true;`,
         );
@@ -36,7 +52,7 @@ export default function ReelScreen() {
         addToast(msg.text, "friend");
       }
     },
-    [addToast],
+    [addToast, showPlaceholderSafe],
   );
 
   const { connected, sendUrl, sendComment } = useSync({
@@ -48,12 +64,17 @@ export default function ReelScreen() {
       try {
         const msg = JSON.parse(nativeEvent.data);
 
+        // Only hide when video actually starts playing
+        // NOT on 'ready' — that fires before the page has rendered
+        if (msg.type === "video_playing") {
+          hidePlaceholder();
+        }
+
         if (msg.type === "auth") {
           if (msg.status === "logged_out") {
             onLoggedOut();
           } else if (msg.status === "logged_in") {
             onLoginComplete();
-            // if we just logged in, navigate to reels
             if (authState === "logged_out") {
               setTimeout(() => {
                 webviewRef.current?.injectJavaScript(
@@ -69,7 +90,7 @@ export default function ReelScreen() {
         }
       } catch {}
     },
-    [authState, onLoggedOut, onLoginComplete, sendUrl],
+    [authState, onLoggedOut, onLoginComplete, sendUrl, hidePlaceholder],
   );
 
   const handleSend = useCallback(() => {
@@ -97,14 +118,9 @@ export default function ReelScreen() {
         userAgent="Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
       />
 
-      {/* Black splash while WebView loads — hides flash of unstyled Instagram */}
-      {!loaded && (
-        <View style={styles.splash}>
-          <ActivityIndicator color="#fff" size="small" />
-        </View>
-      )}
+      {/* Placeholder — visible on start and on each incoming reel change */}
+      <ReelPlaceholder visible={showPlaceholder} />
 
-      {/* Overlays — zIndex 99 puts them above everything Instagram renders */}
       {authState === "logged_in" && loaded && (
         <View style={styles.overlays} pointerEvents="box-none">
           <StatusDot connected={connected} />
@@ -124,15 +140,6 @@ const styles = StyleSheet.create({
       Platform.OS === "android" ? (RNStatusBar.currentHeight ?? 0) : 0,
   },
   webview: { flex: 1 },
-  // covers WebView while loading — prevents flash of Instagram chrome
-  splash: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#000",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 50,
-  },
-  // wrapper for all our overlays — sits above WebView and Instagram's own UI
   overlays: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 99,
