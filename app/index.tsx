@@ -17,6 +17,12 @@ import { useSync } from "../hooks/useSync";
 import { useToasts } from "../hooks/useToasts";
 import { INJECTED_JS } from "../utils/injected.js";
 
+function reelId(url: string) {
+  const parts = (url || "").split("/reels/");
+  if (parts.length < 2) return "";
+  return parts[1].replace(/\/$/, "");
+}
+
 export default function ReelScreen() {
   const webviewRef = useRef<WebView>(null);
   const [input, setInput] = useState("");
@@ -24,16 +30,19 @@ export default function ReelScreen() {
   const [showPlaceholder, setShowPlaceholder] = useState(true);
   const hideTimer = useRef<any>(null);
 
+  // Track whether WE triggered the navigation (so we don't echo it back)
+  const syncNavigating = useRef(false);
+  // Last URL we sent to server (don't re-send what we just received)
+  const lastSentId = useRef("");
+
   const { authState, onLoggedOut, onLoginComplete } = useAuth();
   const { toasts, addToast } = useToasts();
 
-  // Hide placeholder — called from multiple places
   const hidePlaceholder = useCallback(() => {
     clearTimeout(hideTimer.current);
     setShowPlaceholder(false);
   }, []);
 
-  // Show placeholder + 4s safety fallback so it never gets stuck
   const showPlaceholderSafe = useCallback(() => {
     setShowPlaceholder(true);
     clearTimeout(hideTimer.current);
@@ -43,10 +52,18 @@ export default function ReelScreen() {
   const onSyncMessage = useCallback(
     (msg: any) => {
       if (msg.type === "url_change") {
-        showPlaceholderSafe(); // show while loading
+        const id = reelId(msg.url);
+        // Mark that WE are triggering this navigation — don't echo back
+        syncNavigating.current = true;
+        lastSentId.current = id;
+        showPlaceholderSafe();
         webviewRef.current?.injectJavaScript(
           `window.location.href = '${msg.url}'; true;`,
         );
+        // Clear flag after navigation settles
+        setTimeout(() => {
+          syncNavigating.current = false;
+        }, 3000);
       }
       if (msg.type === "comment") {
         addToast(msg.text, "friend");
@@ -64,8 +81,6 @@ export default function ReelScreen() {
       try {
         const msg = JSON.parse(nativeEvent.data);
 
-        // Only hide when video actually starts playing
-        // NOT on 'ready' — that fires before the page has rendered
         if (msg.type === "video_playing") {
           hidePlaceholder();
         }
@@ -85,12 +100,32 @@ export default function ReelScreen() {
           }
         }
 
+        // url_change from injected JS — only send if WE scrolled (not a sync nav)
         if (msg.type === "url_change" && authState === "logged_in") {
-          sendUrl(msg.url);
+          const id = reelId(msg.url);
+          if (!syncNavigating.current && id && id !== lastSentId.current) {
+            lastSentId.current = id;
+            sendUrl(msg.url);
+          }
         }
       } catch {}
     },
     [authState, onLoggedOut, onLoginComplete, sendUrl, hidePlaceholder],
+  );
+
+  // onNavigationStateChange — Android reliable URL tracking
+  const onNavStateChange = useCallback(
+    (navState: any) => {
+      if (!navState.url?.includes("/reels/")) return;
+      if (authState !== "logged_in") return;
+      // Skip if we triggered this navigation from a sync message
+      if (syncNavigating.current) return;
+      const id = reelId(navState.url);
+      if (!id || id === lastSentId.current) return;
+      lastSentId.current = id;
+      sendUrl(navState.url);
+    },
+    [authState, sendUrl],
   );
 
   const handleSend = useCallback(() => {
@@ -110,7 +145,11 @@ export default function ReelScreen() {
         injectedJavaScript={INJECTED_JS}
         injectedJavaScriptBeforeContentLoaded={INJECTED_JS}
         onMessage={onWebViewMessage}
-        onLoad={() => setLoaded(true)}
+        onLoad={() => {
+          setLoaded(true);
+          setTimeout(hidePlaceholder, 1500);
+        }}
+        onNavigationStateChange={onNavStateChange}
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
         sharedCookiesEnabled
@@ -118,7 +157,6 @@ export default function ReelScreen() {
         userAgent="Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
       />
 
-      {/* Placeholder — visible on start and on each incoming reel change */}
       <ReelPlaceholder visible={showPlaceholder} />
 
       {authState === "logged_in" && loaded && (
