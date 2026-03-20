@@ -10,5 +10,5 @@ export const CONFIG = {
   REQUIRE_LOGIN: true,
 } as const;
 
-export const TOAST_DURATION = 4500; // ms comment toast visible
+export const TOAST_DURATION = 6500; // ms comment toast visible
 export const MAX_TOASTS = 3; // max visible at once
