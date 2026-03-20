@@ -1,6 +1,4 @@
-// injected.js — threaded rewrite
-// Moves the URL-polling loop off the main thread via an inline Worker.
-// DOM work is debounced so MutationObserver callbacks never stack.
+// injected.js — threaded rewrite + overlay tap test + audio state indicator
 
 export const INJECTED_JS = `(function(){
   if(window.__rw)return;window.__rw=true;
@@ -58,11 +56,43 @@ export const INJECTED_JS = `(function(){
   [0,300,800,2000].forEach(function(t){ setTimeout(hideNav,t); });
   setTimeout(hideLoginBanners, 1000);
 
-  /* ── overlay + video watching ────────────────────────────────────
-     The overlay itself stays in the DOM untouched so its native
-     React click handler (mute/unmute) keeps working.
-     We only hide its two direct child divs so the UI is invisible
-     but taps still fall through to the overlay and fire normally.  */
+  /* ── audio state indicator ───────────────────────────────────────
+     Pill sitting to the right of the test button.
+     States:
+       waiting  – grey,  no video found yet
+       muted    – red,   video exists but muted=true
+       live     – green, video playing + muted=false              */
+  var _statePill = null;
+
+  var STATE = {
+    WAITING: { label:'⏳ waiting', bg:'rgba(80,80,80,0.85)',  border:'rgba(255,255,255,0.25)' },
+    MUTED:   { label:'🔇 muted',   bg:'rgba(180,30,30,0.85)', border:'rgba(255,100,100,0.5)'  },
+    LIVE:    { label:'🔊 live',    bg:'rgba(20,140,60,0.85)', border:'rgba(80,255,130,0.5)'   },
+  };
+
+  function setPillState(key){
+    if(!_statePill)return;
+    var s = STATE[key] || STATE.WAITING;
+    _statePill.textContent = s.label;
+    _statePill.style.background = s.bg;
+    _statePill.style.borderColor = s.border;
+  }
+
+  /* Poll the active video every second and update the pill */
+  function pollAudioState(){
+    var vid = document.querySelector('video');
+    if(!vid){
+      setPillState('WAITING'); return;
+    }
+    if(vid.muted || vid.volume === 0){
+      setPillState('MUTED');
+    } else {
+      setPillState('LIVE');
+    }
+  }
+  setInterval(pollAudioState, 800);
+
+  /* ── overlay + video watching ────────────────────────────────── */
   var _vidTimer=null;
   function scheduleVideos(){
     if(_vidTimer)return;
@@ -72,11 +102,6 @@ export const INJECTED_JS = `(function(){
   function watchVideos(){
     document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el){
       if(el.__rwOverlay)return; el.__rwOverlay=true;
-
-      /* Hide only the two direct child divs:
-           children[0] = mute/unmute icon button
-           children[1] = info panel (username, caption, audio, actions)
-         The overlay wrapper itself is left visible + interactive.   */
       var ch=el.children;
       for(var i=0;i<ch.length;i++){
         ch[i].style.cssText='visibility:hidden!important';
@@ -85,13 +110,112 @@ export const INJECTED_JS = `(function(){
 
     document.querySelectorAll('video').forEach(function(v){
       if(v.__rwWatched)return; v.__rwWatched=true;
-      v.addEventListener('playing',function(){ post({type:'video_playing'}); });
+      v.addEventListener('playing', function(){ post({type:'video_playing'}); });
+      /* Update pill immediately on mute/unmute events from any source */
+      v.addEventListener('volumechange', function(){ pollAudioState(); });
     });
   }
 
   new MutationObserver(scheduleVideos)
     .observe(document.documentElement,{childList:true,subtree:true});
   watchVideos();
+
+  /* ── TEST BUTTON + STATE PILL ────────────────────────────────── */
+  function fireClickAt(x, y, target){
+    var opts={ bubbles:true, cancelable:true, view:window,
+               clientX:x, clientY:y, screenX:x, screenY:y };
+    try {
+      var touch = new Touch({ identifier:1, target:target,
+                               clientX:x, clientY:y,
+                               screenX:x, screenY:y,
+                               pageX:x,   pageY:y,
+                               radiusX:1, radiusY:1, rotationAngle:0, force:1 });
+      var tOpts = { bubbles:true, cancelable:true, touches:[touch],
+                    targetTouches:[touch], changedTouches:[touch] };
+      target.dispatchEvent(new TouchEvent('touchstart', tOpts));
+      target.dispatchEvent(new TouchEvent('touchend',
+        Object.assign({}, tOpts, { touches:[], targetTouches:[] })));
+    } catch(e){}
+    target.dispatchEvent(new PointerEvent('pointerdown', opts));
+    target.dispatchEvent(new PointerEvent('pointerup',   opts));
+    target.dispatchEvent(new MouseEvent('click',         opts));
+  }
+
+  function tapOverlay(){
+    var overlay = document.querySelector('[id^="clipsoverlay"]');
+    if(!overlay){
+      post({type:'test_tap', status:'no_overlay'});
+      return;
+    }
+    var r  = overlay.getBoundingClientRect();
+    var cx = r.left + r.width  / 2;
+    var cy = r.top  + r.height / 2;
+    fireClickAt(cx, cy, overlay);
+    post({type:'test_tap', status:'fired', x:cx, y:cy, overlayId:overlay.id});
+    /* Slight delay so muted state has time to flip before we re-poll */
+    setTimeout(pollAudioState, 120);
+  }
+
+  var PILL_CSS = [
+    'position:fixed',
+    'top:60px',
+    'z-index:2147483647',
+    'color:#fff',
+    'border:1.5px solid rgba(255,255,255,0.4)',
+    'border-radius:8px',
+    'padding:8px 14px',
+    'font-size:13px',
+    'font-family:system-ui,sans-serif',
+    'pointer-events:none',       /* pill is display-only, not tappable */
+    'white-space:nowrap',
+    'transition:background 0.3s,border-color 0.3s',
+  ].join(';');
+
+  var BTN_CSS = [
+    'position:fixed',
+    'top:60px',
+    'left:12px',
+    'z-index:2147483647',
+    'background:rgba(0,0,0,0.75)',
+    'color:#fff',
+    'border:1.5px solid rgba(255,255,255,0.4)',
+    'border-radius:8px',
+    'padding:8px 14px',
+    'font-size:13px',
+    'font-family:system-ui,sans-serif',
+    'cursor:pointer',
+    'pointer-events:auto',
+    '-webkit-tap-highlight-color:transparent',
+  ].join(';');
+
+  function addTestUI(){
+    if(document.getElementById('__rw_test_btn'))return;
+
+    var btn = document.createElement('button');
+    btn.id  = '__rw_test_btn';
+    btn.style.cssText = BTN_CSS;
+    btn.textContent = '🔊 TAP TEST';
+    btn.addEventListener('click', function(e){ e.stopPropagation(); tapOverlay(); });
+
+    var pill = document.createElement('div');
+    pill.id  = '__rw_audio_pill';
+    pill.style.cssText = PILL_CSS;
+    /* Position pill just to the right of the button (button ~110px wide) */
+    pill.style.left = '130px';
+    pill.style.background  = STATE.WAITING.bg;
+    pill.style.borderColor = STATE.WAITING.border;
+    pill.textContent = STATE.WAITING.label;
+    _statePill = pill;
+
+    var root = document.body || document.documentElement;
+    root.appendChild(btn);
+    root.appendChild(pill);
+
+    pollAudioState();
+  }
+
+  if(document.body){ addTestUI(); }
+  else { document.addEventListener('DOMContentLoaded', addTestUI); }
 
   /* ── URL change + auth detection ─────────────────────────────── */
   function ping(url){
