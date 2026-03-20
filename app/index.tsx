@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Animated,
   Platform,
   StatusBar as RNStatusBar,
   StyleSheet,
@@ -36,6 +37,10 @@ export default function ReelScreen() {
   const [loaded, setLoaded] = useState(false);
   const [showPlaceholder, setShowPlaceholder] = useState(true);
 
+  // Keyboard visibility state
+  const [keyboardVisible, setKeyboardVisible] = useState(true);
+  const keyboardFadeAnim = useRef(new Animated.Value(1)).current;
+
   const hideTimer = useRef<any>(null);
   const syncNavigating = useRef(false);
   const lastSentId = useRef("");
@@ -47,6 +52,21 @@ export default function ReelScreen() {
 
   const { authState, onLoggedOut, onLoginComplete } = useAuth();
   const { toasts, addToast } = useToasts();
+
+  // Keyboard fade animation
+  const fadeKeyboard = useCallback(
+    (show: boolean) => {
+      Animated.timing(keyboardFadeAnim, {
+        toValue: show ? 1 : 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setKeyboardVisible(show));
+    },
+    [keyboardFadeAnim],
+  );
+
+  const hideKeyboard = useCallback(() => fadeKeyboard(false), [fadeKeyboard]);
+  const showKeyboard = useCallback(() => fadeKeyboard(true), [fadeKeyboard]);
 
   /* ───────── reload guard ───────── */
   const reloadWebView = useCallback((reason: string) => {
@@ -209,8 +229,42 @@ export default function ReelScreen() {
           <StatusDot connected={connected} />
           <ToastLayer toasts={toasts} />
 
-          {/* 🔥 BOTTOM CHAT + KEYBOARD */}
-          <View style={styles.wrapper}>
+          {/* Overlay to hide keyboard when tapping outside (only when keyboard is visible) */}
+          {keyboardVisible && (
+            <TouchableOpacity
+              style={styles.keyboardOverlay}
+              onPress={hideKeyboard}
+              activeOpacity={1}
+            />
+          )}
+
+          {/* Bottom panel – appears only when keyboard is hidden */}
+          {!keyboardVisible && (
+            <TouchableOpacity
+              style={styles.panel}
+              onPress={showKeyboard}
+              activeOpacity={0.9}
+            />
+          )}
+
+          {/* Keyboard container with fade animation */}
+          <Animated.View
+            style={[
+              styles.wrapper,
+              {
+                opacity: keyboardFadeAnim,
+                transform: [
+                  {
+                    translateY: keyboardFadeAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [50, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+            pointerEvents={keyboardVisible ? "auto" : "none"}
+          >
             <View style={styles.inputBar}>
               <TextInput
                 value={input}
@@ -225,7 +279,7 @@ export default function ReelScreen() {
             </View>
 
             <CustomKeyboard onKeyPress={handleKey} />
-          </View>
+          </Animated.View>
         </View>
       )}
     </View>
@@ -233,7 +287,6 @@ export default function ReelScreen() {
 }
 
 /* ───────── styles ───────── */
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -241,35 +294,48 @@ const styles = StyleSheet.create({
     paddingTop:
       Platform.OS === "android" ? (RNStatusBar.currentHeight ?? 0) : 0,
   },
-
   webview: { flex: 1 },
-
   overlays: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 99,
     pointerEvents: "box-none",
   },
-
+  keyboardOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "transparent",
+    zIndex: 50,
+  },
+  panel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: "15%", // 15% of screen height
+    backgroundColor: "transparent",
+    zIndex: 100,
+  },
   wrapper: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    zIndex: 200,
   },
-
   inputBar: {
     flexDirection: "row",
     alignItems: "center",
     padding: 10,
     backgroundColor: "rgba(0,0,0,0.4)",
   },
-
   input: {
     flex: 1,
     color: "#fff",
     fontSize: 16,
   },
-
   sendBtn: {
     marginLeft: 10,
     backgroundColor: "#007aff",
@@ -277,7 +343,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 6,
   },
-
   sendText: {
     color: "#fff",
     fontSize: 15,
