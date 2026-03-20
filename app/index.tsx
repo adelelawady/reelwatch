@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Platform,
   StatusBar as RNStatusBar,
@@ -17,6 +17,12 @@ import { useSync } from "../hooks/useSync";
 import { useToasts } from "../hooks/useToasts";
 import { INJECTED_JS } from "../utils/injected.js";
 
+// How long to wait for the very first 'ready' after the component mounts.
+const READY_TIMEOUT_MS = 8_000;
+
+// Minimum gap between reloads to prevent thrash.
+const RELOAD_COOLDOWN_MS = 6_000;
+
 function reelId(url: string) {
   const parts = (url || "").split("/reels/");
   if (parts.length < 2) return "";
@@ -30,13 +36,43 @@ export default function ReelScreen() {
   const [showPlaceholder, setShowPlaceholder] = useState(true);
   const hideTimer = useRef<any>(null);
 
-  // Track whether WE triggered the navigation (so we don't echo it back)
   const syncNavigating = useRef(false);
-  // Last URL we sent to server (don't re-send what we just received)
   const lastSentId = useRef("");
+
+  // ── watchdog ─────────────────────────────────────────────────────
+  const readyTimer = useRef<any>(null);
+  const lastReloadAt = useRef<number>(0);
+  // Flips true on first 'ready'. After that we never reload for
+  // a missing ready — onLoad fires on every SPA navigation too.
+  const everReceivedReady = useRef(false);
 
   const { authState, onLoggedOut, onLoginComplete } = useAuth();
   const { toasts, addToast } = useToasts();
+
+  // ── throttled reload ─────────────────────────────────────────────
+  const reloadWebView = useCallback((reason: string) => {
+    const now = Date.now();
+    if (now - lastReloadAt.current < RELOAD_COOLDOWN_MS) return;
+    lastReloadAt.current = now;
+    console.warn("[ReelScreen] reloading WebView:", reason);
+    webviewRef.current?.reload();
+  }, []);
+
+  // ── arm watchdog ONCE on mount ───────────────────────────────────
+  // We do this in a useEffect so it runs exactly once when the
+  // component first mounts. It is never re-armed after that.
+  // If 'ready' arrives in time it gets cleared. If not → reload once.
+  useEffect(() => {
+    readyTimer.current = setTimeout(() => {
+      if (!everReceivedReady.current) {
+        reloadWebView("watchdog: 'ready' never received on first load");
+      }
+    }, READY_TIMEOUT_MS);
+
+    return () => clearTimeout(readyTimer.current);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ────────────────────────────────────────────────────────────────
 
   const hidePlaceholder = useCallback(() => {
     clearTimeout(hideTimer.current);
@@ -53,14 +89,12 @@ export default function ReelScreen() {
     (msg: any) => {
       if (msg.type === "url_change") {
         const id = reelId(msg.url);
-        // Mark that WE are triggering this navigation — don't echo back
         syncNavigating.current = true;
         lastSentId.current = id;
         showPlaceholderSafe();
         webviewRef.current?.injectJavaScript(
           `window.location.href = '${msg.url}'; true;`,
         );
-        // Clear flag after navigation settles
         setTimeout(() => {
           syncNavigating.current = false;
         }, 3000);
@@ -81,6 +115,30 @@ export default function ReelScreen() {
       try {
         const msg = JSON.parse(nativeEvent.data);
 
+        // ── startup signals ────────────────────────────────────────
+        if (msg.type === "ready") {
+          // Clear the one-time watchdog and mark injection healthy.
+          clearTimeout(readyTimer.current);
+          everReceivedReady.current = true;
+        }
+
+        if (msg.type === "inject_error") {
+          // Only act on errors that arrive before the first 'ready'.
+          // After that the injection is healthy and Instagram's own
+          // JS errors should not cause reloads.
+          if (!everReceivedReady.current) {
+            clearTimeout(readyTimer.current);
+            console.warn(
+              "[inject_error]",
+              msg.msg,
+              msg.src ? `${msg.src}:${msg.line}` : "",
+            );
+            reloadWebView(`inject_error: ${msg.msg}`);
+          }
+          return;
+        }
+
+        // ── normal messages ────────────────────────────────────────
         if (msg.type === "video_playing") {
           hidePlaceholder();
         }
@@ -100,7 +158,6 @@ export default function ReelScreen() {
           }
         }
 
-        // url_change from injected JS — only send if WE scrolled (not a sync nav)
         if (msg.type === "url_change" && authState === "logged_in") {
           const id = reelId(msg.url);
           if (!syncNavigating.current && id && id !== lastSentId.current) {
@@ -110,15 +167,20 @@ export default function ReelScreen() {
         }
       } catch {}
     },
-    [authState, onLoggedOut, onLoginComplete, sendUrl, hidePlaceholder],
+    [
+      authState,
+      onLoggedOut,
+      onLoginComplete,
+      sendUrl,
+      hidePlaceholder,
+      reloadWebView,
+    ],
   );
 
-  // onNavigationStateChange — Android reliable URL tracking
   const onNavStateChange = useCallback(
     (navState: any) => {
       if (!navState.url?.includes("/reels/")) return;
       if (authState !== "logged_in") return;
-      // Skip if we triggered this navigation from a sync message
       if (syncNavigating.current) return;
       const id = reelId(navState.url);
       if (!id || id === lastSentId.current) return;
@@ -148,6 +210,7 @@ export default function ReelScreen() {
         onLoad={() => {
           setLoaded(true);
           setTimeout(hidePlaceholder, 1500);
+          // No watchdog here — onLoad fires on every SPA navigation.
         }}
         onNavigationStateChange={onNavStateChange}
         allowsInlineMediaPlayback
