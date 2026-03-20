@@ -1,132 +1,73 @@
-// Native floating chat bar — lives entirely above the WebView in RN layer.
-// Uses useSafeAreaInsets so it clears home indicator on all devices.
-// No KeyboardAvoidingView — that resizes WebView and pauses video.
-// Instead we use softwareKeyboardLayoutMode="adjustNothing" in app.json
-// and manually translate the bar up when keyboard opens.
-
-import { useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
-  Animated,
-  Keyboard,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import CustomKeyboard from "./CustomKeyboard";
 
-type Props = {
-  value: string;
-  onChange: (t: string) => void;
-  onSend: () => void;
-};
+export default function ChatBar({ onSend }) {
+  const [text, setText] = useState("");
 
-export function ChatBar({ value, onChange, onSend }: Props) {
-  const inputRef = useRef<TextInput>(null);
-  const translateY = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const showEvent =
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent =
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-
-    const onShow = Keyboard.addListener(showEvent, (e) => {
-      Animated.timing(translateY, {
-        toValue: -e.endCoordinates.height,
-        duration: Platform.OS === "ios" ? (e.duration ?? 250) : 200,
-        useNativeDriver: true,
-      }).start();
-    });
-
-    const onHide = Keyboard.addListener(hideEvent, (e) => {
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: Platform.OS === "ios" ? (e.duration ?? 250) : 200,
-        useNativeDriver: true,
-      }).start();
-    });
-
-    return () => {
-      onShow.remove();
-      onHide.remove();
-    };
-  }, []);
+  const handleKey = (key) => {
+    if (key === "backspace") {
+      setText(text.slice(0, -1));
+      return;
+    }
+    setText(text + key);
+  };
 
   const handleSend = () => {
-    if (!value.trim()) return;
-    onSend();
-    inputRef.current?.focus();
+    if (text.trim()) {
+      onSend(text);
+      setText("");
+    }
   };
 
   return (
-    <Animated.View style={[styles.wrapper, { transform: [{ translateY }] }]}>
-      <View style={styles.row}>
+    <>
+      <View style={styles.inputWrapper}>
         <TextInput
-          ref={inputRef}
+          value={text}
           style={styles.input}
-          value={value}
-          onChangeText={onChange}
-          placeholder="Say something…"
-          placeholderTextColor="rgba(255,255,255,0.4)"
-          onSubmitEditing={handleSend}
-          returnKeyType="send"
-          blurOnSubmit={false}
-          selectionColor="rgba(255,255,255,0.7)"
+          placeholder="Type a message..."
+          placeholderTextColor="#aaa"
+          editable={false} // Disable system keyboard
         />
-        <TouchableOpacity
-          onPress={handleSend}
-          activeOpacity={0.7}
-          style={styles.btn}
-        >
-          <Text style={styles.btnText}>➤</Text>
+        <TouchableOpacity onPress={handleSend} style={styles.sendBtn}>
+          <Text style={styles.sendTxt}>Send</Text>
         </TouchableOpacity>
       </View>
-    </Animated.View>
+
+      <CustomKeyboard onKeyPress={handleKey} />
+    </>
   );
 }
 
-const BOTTOM_INSET = Platform.OS === "ios" ? 34 : 16;
-
 const styles = StyleSheet.create({
-  wrapper: {
-    position: "absolute",
-    bottom: BOTTOM_INSET,
-    left: 0,
-    right: 0,
-    zIndex: 999,
-    elevation: 999, // Android
-  },
-  row: {
+  inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 10,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   input: {
     flex: 1,
-    color: "#fff",
-    fontSize: 16,
+    fontSize: 17,
+    color: "#000",
+  },
+  sendBtn: {
+    marginLeft: 10,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    // transparent — text floats directly on video
-    backgroundColor: "transparent",
-    textShadowColor: "rgba(0,0,0,0.95)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
+    backgroundColor: "#007aff",
+    borderRadius: 5,
   },
-  btn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnText: {
+  sendTxt: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 17,
   },
 });
