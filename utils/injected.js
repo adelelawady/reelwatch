@@ -109,27 +109,20 @@ var VisibilitySpoof = {
 var ActiveVideo = {
   _v: null,
 
-  // Find the video inside the currently visible slide.
-  // Returns null if nothing found.
   _findCurrent: function(){
-    // Walk all absolute-positioned slide containers
-    // They all match: position:absolute, has a transform style
     var slides = document.querySelectorAll('[style*="transform"]');
     for(var i=0; i<slides.length; i++){
       var el = slides[i];
       var t  = el.style.transform || '';
-      // Current slide: translate3d(0px, 0px, 0px) OR "none"
       if(t === 'none' || t === 'translate3d(0px, 0px, 0px)'){
         var v = el.querySelector('video');
         if(v) return v;
       }
     }
-    // Fallback: first playing video
     var all = document.querySelectorAll('video');
     for(var j=0; j<all.length; j++){
       if(!all[j].paused) return all[j];
     }
-    // Last resort: first video
     return all.length ? all[0] : null;
   },
 
@@ -144,7 +137,6 @@ var ActiveVideo = {
   },
 
   get: function(){
-    // Always re-resolve on get — cheap and always fresh
     return this._findCurrent();
   },
 
@@ -187,7 +179,6 @@ var Router = {
     NavHider.reset();
     post({type:'url_change',url:url});
     NavHider.schedule();
-    // Refresh active video after slide transition settles
     setTimeout(function(){ ActiveVideo.refresh(); AudioState.poll(); }, 300);
     LOG.info('url_change', url);
   },
@@ -280,8 +271,6 @@ var OverlayControls = {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    VIDEO WATCHER
-   Scans for new overlays. Also attaches a playing listener to every video
-   so we can post video_playing and refresh the active video ref.
 ═══════════════════════════════════════════════════════════════════════════ */
 var VideoWatcher = {
   _timer: null,
@@ -369,12 +358,10 @@ var TapEngine = {
     LOG.info('tap at',x.toFixed(0)+','+y.toFixed(0));
   },
   tapOverlay: function(){
-    // Tap the overlay that belongs to the current (visible) slide
     var v = ActiveVideo.get();
     var overlay = null;
 
     if(v){
-      // Walk up from the video to find the clipsoverlay in the same slide
       var p = v.parentElement;
       for(var i=0; i<15; i++){
         if(!p) break;
@@ -383,9 +370,7 @@ var TapEngine = {
         p = p.parentElement;
       }
     }
-    // Fallback: first overlay in DOM
     if(!overlay) overlay = document.querySelector('[id^="clipsoverlay"]');
-
     if(!overlay){ post({type:'test_tap',status:'no_overlay'}); LOG.warn('no overlay'); return; }
 
     var r  = overlay.getBoundingClientRect();
@@ -417,7 +402,6 @@ var DevPanel = {
       'font-size:11px','color:#fff','box-shadow:0 4px 24px rgba(0,0,0,0.7)',
     ].join(';');
 
-    /* title bar */
     var tb = this._row('rgba(255,255,255,0.07)','6px 10px');
     tb.style.justifyContent = 'space-between';
     var title = document.createElement('span');
@@ -437,7 +421,6 @@ var DevPanel = {
     var body = document.createElement('div');
     this._bodyEl = body;
 
-    /* row 1: video controls */
     var r1 = this._row('rgba(255,255,255,0.04)','6px 8px');
     r1.style.cssText += ';flex-wrap:wrap;gap:6px';
     r1.appendChild(this._btn('🔊 Tap',    function(){ TapEngine.tapOverlay(); }));
@@ -448,7 +431,6 @@ var DevPanel = {
     r1.appendChild(this._btn('📋 Post',   function(){ post({type:'dev_ping',ts:Date.now()}); LOG.info('dev_ping'); }));
     body.appendChild(r1);
 
-    /* row 2: view controls */
     var r2 = this._row('rgba(255,255,255,0.02)','6px 8px');
     r2.style.cssText += ';flex-wrap:wrap;gap:6px';
     var lbl = document.createElement('span');
@@ -482,7 +464,6 @@ var DevPanel = {
     }));
     body.appendChild(r2);
 
-    /* state row */
     var sr = this._row('rgba(255,255,255,0.03)','5px 10px');
     sr.style.gap = '8px';
     var pill = document.createElement('div');
@@ -495,22 +476,11 @@ var DevPanel = {
     setInterval(function(){
       var v = ActiveVideo.get();
       var n = document.querySelectorAll('[id^="clipsoverlay"]').length;
-      // Show transform of current video's container for debugging
-      var transform = 'none';
-      if(v){
-        var p = v.parentElement;
-        for(var i=0;i<10;i++){
-          if(!p) break;
-          if(p.style && p.style.transform){ transform = p.style.transform.slice(0,24); break; }
-          p = p.parentElement;
-        }
-      }
       counter.textContent = 'ov:'+n+' vid:'+(v?'✓'+(v.paused?'⏸':'▶'):'✗');
     }, 2000);
     sr.appendChild(pill); sr.appendChild(counter);
     body.appendChild(sr);
 
-    /* log */
     var logEl = document.createElement('div');
     logEl.style.cssText = 'height:'+CFG.PANEL_HEIGHT+'px;overflow-y:auto;padding:4px 0;font-size:10px;line-height:1.5';
     LOG.setEl(logEl);
@@ -557,6 +527,10 @@ if(document.body){ DevPanel.init(); }
 else { document.addEventListener('DOMContentLoaded', function(){ DevPanel.init(); }); }
 
 window.__rwSetEnv = function(env){ CFG.ENV=env; LOG.info('ENV:',env); };
+
+/* Exposed to RN — call via injectJavaScript to tap the current overlay.
+   Used after server-navigated video starts playing to sync mute state. */
+window.__rwTapOverlay = function(){ TapEngine.tapOverlay(); };
 
 _startupDone = true;
 window.removeEventListener('error',              _onStartupError);

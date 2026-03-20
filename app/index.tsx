@@ -39,11 +39,14 @@ export default function ReelScreen() {
   const syncNavigating = useRef(false);
   const lastSentId = useRef("");
 
+  // When the server sends us to a new reel, we set this flag.
+  // The next video_playing event will fire a tap on the overlay so
+  // mute state is toggled via a real gesture (required by the browser).
+  const pendingTapOnPlay = useRef(false);
+
   // ── watchdog ─────────────────────────────────────────────────────
   const readyTimer = useRef<any>(null);
   const lastReloadAt = useRef<number>(0);
-  // Flips true on first 'ready'. After that we never reload for
-  // a missing ready — onLoad fires on every SPA navigation too.
   const everReceivedReady = useRef(false);
 
   const { authState, onLoggedOut, onLoginComplete } = useAuth();
@@ -59,9 +62,6 @@ export default function ReelScreen() {
   }, []);
 
   // ── arm watchdog ONCE on mount ───────────────────────────────────
-  // We do this in a useEffect so it runs exactly once when the
-  // component first mounts. It is never re-armed after that.
-  // If 'ready' arrives in time it gets cleared. If not → reload once.
   useEffect(() => {
     readyTimer.current = setTimeout(() => {
       if (!everReceivedReady.current) {
@@ -92,6 +92,10 @@ export default function ReelScreen() {
         syncNavigating.current = true;
         lastSentId.current = id;
         showPlaceholderSafe();
+
+        // Mark that the next video_playing should trigger an overlay tap
+        pendingTapOnPlay.current = true;
+
         webviewRef.current?.injectJavaScript(
           `window.location.href = '${msg.url}'; true;`,
         );
@@ -117,15 +121,11 @@ export default function ReelScreen() {
 
         // ── startup signals ────────────────────────────────────────
         if (msg.type === "ready") {
-          // Clear the one-time watchdog and mark injection healthy.
           clearTimeout(readyTimer.current);
           everReceivedReady.current = true;
         }
 
         if (msg.type === "inject_error") {
-          // Only act on errors that arrive before the first 'ready'.
-          // After that the injection is healthy and Instagram's own
-          // JS errors should not cause reloads.
           if (!everReceivedReady.current) {
             clearTimeout(readyTimer.current);
             console.warn(
@@ -141,6 +141,17 @@ export default function ReelScreen() {
         // ── normal messages ────────────────────────────────────────
         if (msg.type === "video_playing") {
           hidePlaceholder();
+
+          // If this play event followed a server-driven navigation,
+          // fire a tap on the overlay. This is the only browser-approved
+          // way to toggle mute — programmatic v.muted=false is blocked
+          // without a user gesture. The tap counts as one.
+          if (pendingTapOnPlay.current) {
+            pendingTapOnPlay.current = false;
+            webviewRef.current?.injectJavaScript(
+              `if(window.__rwTapOverlay) window.__rwTapOverlay(); true;`,
+            );
+          }
         }
 
         if (msg.type === "auth") {
@@ -210,7 +221,6 @@ export default function ReelScreen() {
         onLoad={() => {
           setLoaded(true);
           setTimeout(hidePlaceholder, 1500);
-          // No watchdog here — onLoad fires on every SPA navigation.
         }}
         onNavigationStateChange={onNavStateChange}
         allowsInlineMediaPlayback
