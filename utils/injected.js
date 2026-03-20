@@ -1,92 +1,251 @@
-// injected.js — startup watchdog safe version
+// ─────────────────────────────────────────────────────────────────────────────
+//  injected.js
+//  DEV / PROD structured injection.
+//
+//  KEY FIX: Instagram renders all reel slides simultaneously in the DOM with
+//  position:absolute + transform:translate3d(0,851px,0) etc.
+//  The CURRENT slide always has transform:translate3d(0px, 0px, 0px).
+//  ActiveVideo now finds the video inside that specific container instead of
+//  guessing by paused state — which was unreliable.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const INJECTED_JS = `(function(){
-  var rn=window.ReactNativeWebView;
-  function post(obj){ if(rn)rn.postMessage(JSON.stringify(obj)); }
 
-  // Second injection run (injectedJavaScript fires after
-  // injectedJavaScriptBeforeContentLoaded which already ran).
-  // Just re-confirm ready so the native watchdog is satisfied.
-  if(window.__rw){
-    post({type:'ready'});
-    return;
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════════════════════════════ */
+var CFG = {
+  ENV:               'dev',
+  NAV_DEBOUNCE:      80,
+  VIDEO_DEBOUNCE:    150,
+  AUDIO_POLL:        2000,
+  NAV_RETRY_TIMES:   [0, 300, 800, 2000],
+  LOGIN_BANNER_DELAY: 1000,
+  PANEL_MAX_LOGS:    80,
+  PANEL_HEIGHT:      220,
+  OVERLAY_MUTE_IDX:  0,
+  OVERLAY_INFO_IDX:  1,
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOOT GUARD
+═══════════════════════════════════════════════════════════════════════════ */
+var rn = window.ReactNativeWebView;
+function post(obj){ if(rn) rn.postMessage(JSON.stringify(obj)); }
+
+if(window.__rw){ post({type:'ready'}); return; }
+window.__rw = true;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGGER
+═══════════════════════════════════════════════════════════════════════════ */
+var LOG = (function(){
+  var _el = null;
+  function _push(lvl, args){
+    if(CFG.ENV !== 'dev') return;
+    var msg = Array.prototype.slice.call(args).map(function(a){
+      return typeof a === 'object' ? JSON.stringify(a) : String(a);
+    }).join(' ');
+    if(_el){
+      var d = document.createElement('div');
+      d.style.cssText = 'padding:1px 4px;border-bottom:1px solid rgba(255,255,255,0.06);' +
+        (lvl==='ERR'?'color:#ff6b6b':lvl==='WARN'?'color:#ffd93d':'color:#c8f5c8');
+      d.textContent = '['+lvl+'] '+msg;
+      _el.appendChild(d);
+      _el.scrollTop = _el.scrollHeight;
+      while(_el.childElementCount > CFG.PANEL_MAX_LOGS) _el.removeChild(_el.firstChild);
+    }
   }
-  window.__rw=true;
+  return {
+    setEl: function(el){ _el = el; },
+    info:  function(){ _push('INFO', arguments); },
+    warn:  function(){ _push('WARN', arguments); },
+    err:   function(){ _push('ERR',  arguments); },
+  };
+})();
 
-  /* ── startup error guard — removed once ready is posted ──────── */
-  var _startupDone=false;
+/* ═══════════════════════════════════════════════════════════════════════════
+   STARTUP ERROR GUARD
+═══════════════════════════════════════════════════════════════════════════ */
+var _startupDone = false;
+function _onStartupError(e){
+  if(_startupDone) return;
+  post({type:'inject_error', msg:(e.message||String(e)), src:(e.filename||''), line:(e.lineno||0)});
+}
+function _onStartupRejection(e){
+  if(_startupDone) return;
+  post({type:'inject_error', msg:String(e.reason&&(e.reason.message||e.reason)||'rejection')});
+}
+window.addEventListener('error',              _onStartupError);
+window.addEventListener('unhandledrejection', _onStartupRejection);
 
-  function onStartupError(e){
-    if(_startupDone)return;
-    post({ type:'inject_error', msg:(e.message||String(e)),
-           src:(e.filename||''), line:(e.lineno||0) });
+/* ═══════════════════════════════════════════════════════════════════════════
+   VISIBILITY SPOOF
+═══════════════════════════════════════════════════════════════════════════ */
+var VisibilitySpoof = {
+  init: function(){
+    try {
+      Object.defineProperty(document,'visibilityState',{get:function(){ return 'visible'; },configurable:true});
+      Object.defineProperty(document,'hidden',         {get:function(){ return false; },     configurable:true});
+    } catch(e){ LOG.warn('spoof failed',e.message); }
+    document.addEventListener('visibilitychange',function(e){
+      e.stopImmediatePropagation();
+    },{capture:true,passive:false});
+    LOG.info('VisibilitySpoof ready');
   }
-  function onStartupRejection(e){
-    if(_startupDone)return;
-    post({ type:'inject_error',
-           msg:String(e.reason&&(e.reason.message||e.reason)||'rejection') });
-  }
-  window.addEventListener('error',              onStartupError);
-  window.addEventListener('unhandledrejection', onStartupRejection);
+};
 
-  /* ── URL change handler ──────────────────────────────────────── */
-  var last=location.href;
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACTIVE VIDEO
+   Instagram keeps ALL reel slides in the DOM at once.
+   Each slide sits in a container with:
+     transform: translate3d(0px, Npx, 0px)   — off-screen slides
+     transform: translate3d(0px, 0px, 0px)   — CURRENT slide
+   OR style contains "transform: none"        — also current on first load.
 
-  function onUrlChange(url){
-    if(url===last)return;
-    last=url;
-    ping(url);
-    navHidden=false;
+   We find the current slide container, then grab its <video>.
+   This is reliable regardless of paused/playing state.
+═══════════════════════════════════════════════════════════════════════════ */
+var ActiveVideo = {
+  _v: null,
+
+  // Find the video inside the currently visible slide.
+  // Returns null if nothing found.
+  _findCurrent: function(){
+    // Walk all absolute-positioned slide containers
+    // They all match: position:absolute, has a transform style
+    var slides = document.querySelectorAll('[style*="transform"]');
+    for(var i=0; i<slides.length; i++){
+      var el = slides[i];
+      var t  = el.style.transform || '';
+      // Current slide: translate3d(0px, 0px, 0px) OR "none"
+      if(t === 'none' || t === 'translate3d(0px, 0px, 0px)'){
+        var v = el.querySelector('video');
+        if(v) return v;
+      }
+    }
+    // Fallback: first playing video
+    var all = document.querySelectorAll('video');
+    for(var j=0; j<all.length; j++){
+      if(!all[j].paused) return all[j];
+    }
+    // Last resort: first video
+    return all.length ? all[0] : null;
+  },
+
+  refresh: function(){
+    var found = this._findCurrent();
+    if(found !== this._v){
+      this._v = found;
+      LOG.info('ActiveVideo updated', found ? found.src.slice(-40) : 'none');
+      AudioState.poll();
+    }
+    return this._v;
+  },
+
+  get: function(){
+    // Always re-resolve on get — cheap and always fresh
+    return this._findCurrent();
+  },
+
+  mute: function(){
+    var v = this.get();
+    if(v){ v.muted = !v.muted; AudioState.poll(); LOG.info('muted:', v.muted); }
+    else { LOG.warn('mute: no active video'); }
+  },
+  play: function(){
+    var v = this.get();
+    if(v) v.play().catch(function(e){ LOG.err('play()', e.message); });
+    else  LOG.warn('play: no active video');
+  },
+  pause: function(){
+    var v = this.get();
+    if(v){ v.pause(); LOG.info('paused'); }
+    else  LOG.warn('pause: no active video');
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROUTER
+═══════════════════════════════════════════════════════════════════════════ */
+var Router = {
+  _last: location.href,
+  init: function(){
+    var self = this;
+    var _push    = history.pushState.bind(history);
+    var _replace = history.replaceState.bind(history);
+    history.pushState    = function(s,t,u){ _push(s,t,u);    self._onChange(location.href); };
+    history.replaceState = function(s,t,u){ _replace(s,t,u); self._onChange(location.href); };
+    window.addEventListener('popstate', function(){ self._onChange(location.href); });
+    this._ping(this._last);
+    LOG.info('Router ready', this._last);
+  },
+  _onChange: function(url){
+    if(url===this._last) return;
+    this._last = url;
+    this._ping(url);
+    NavHider.reset();
     post({type:'url_change',url:url});
-    scheduleNav();
-  }
+    NavHider.schedule();
+    // Refresh active video after slide transition settles
+    setTimeout(function(){ ActiveVideo.refresh(); AudioState.poll(); }, 300);
+    LOG.info('url_change', url);
+  },
+  _ping: function(url){
+    if(url.indexOf('/accounts/login')!==-1||url.indexOf('/?next=')!==-1){
+      post({type:'auth',status:'logged_out'}); LOG.warn('auth: logged_out');
+    } else if(url.indexOf('/reels/')!==-1||url.indexOf('/p/')!==-1||url.indexOf('/u/')!==-1){
+      post({type:'auth',status:'logged_in'}); LOG.info('auth: logged_in');
+    }
+  },
+};
 
-  var _push=history.pushState.bind(history);
-  history.pushState=function(state,title,url){
-    _push(state,title,url); onUrlChange(location.href);
-  };
-  var _replace=history.replaceState.bind(history);
-  history.replaceState=function(state,title,url){
-    _replace(state,title,url); onUrlChange(location.href);
-  };
-  window.addEventListener('popstate',function(){ onUrlChange(location.href); });
-
-  function ping(url){
-    if(url.indexOf('/accounts/login')!==-1||url.indexOf('/?next=')!==-1)
-      post({type:'auth',status:'logged_out'});
-    else if(url.indexOf('/reels/')!==-1||url.indexOf('/p/')!==-1||url.indexOf('/u/')!==-1)
-      post({type:'auth',status:'logged_in'});
-  }
-  ping(last);
-
-  /* ── nav / login-banner hiding ───────────────────────────────── */
-  var navHidden=false;
-
-  function hideNav(){
-    if(navHidden)return;
-    var svg=document.querySelector('svg[aria-label="Home"]');
-    if(!svg)return;
-    var el=svg;
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAV HIDER
+═══════════════════════════════════════════════════════════════════════════ */
+var NavHider = {
+  _hidden: false, _timer: null, _obs: null,
+  init: function(){
+    var self = this;
+    this._obs = new MutationObserver(function(){
+      self.schedule();
+      if(self._hidden){ self._obs.disconnect(); }
+    });
+    this._obs.observe(document.documentElement,{childList:true,subtree:true});
+    CFG.NAV_RETRY_TIMES.forEach(function(t){ setTimeout(function(){ self.hide(); },t); });
+    setTimeout(function(){ self._hideBanners(); }, CFG.LOGIN_BANNER_DELAY);
+    LOG.info('NavHider ready');
+  },
+  reset: function(){ this._hidden = false; },
+  schedule: function(){
+    var self = this;
+    if(this._hidden||this._timer) return;
+    this._timer = setTimeout(function(){ self._timer=null; self.hide(); }, CFG.NAV_DEBOUNCE);
+  },
+  hide: function(){
+    if(this._hidden) return;
+    var svg = document.querySelector('svg[aria-label="Home"]');
+    if(!svg) return;
+    var el = svg;
     for(var i=0;i<10;i++){
-      var p=el.parentElement; if(!p)break;
+      var p=el.parentElement; if(!p) break;
       var r=p.getBoundingClientRect();
       var n=p.querySelectorAll('svg[aria-label]').length;
       if(r.width>=window.innerWidth*0.8&&r.height>0&&r.height<120&&n>=4){
         p.style.cssText='display:none!important';
-        navHidden=true; return;
+        this._hidden=true; LOG.info('nav hidden'); return;
       }
-      if(r.height>120&&n<4)break;
+      if(r.height>120&&n<4) break;
       el=p;
     }
-  }
-
-  function hideLoginBanners(){
+  },
+  _hideBanners: function(){
     document.querySelectorAll('a').forEach(function(a){
       var t=(a.textContent||'').trim();
-      if(t!=='Log in'&&t!=='Open app')return;
+      if(t!=='Log in'&&t!=='Open app') return;
       var p=a.parentElement;
       for(var i=0;i<8;i++){
-        if(!p)break;
+        if(!p) break;
         var r=p.getBoundingClientRect();
         if(r.width>=window.innerWidth*0.8&&r.height>0&&r.height<100){
           p.style.cssText='display:none!important'; break;
@@ -94,141 +253,315 @@ export const INJECTED_JS = `(function(){
         p=p.parentElement;
       }
     });
-  }
+  },
+};
 
-  var _navTimer=null;
-  function scheduleNav(){
-    if(navHidden)return;
-    if(_navTimer)return;
-    _navTimer=setTimeout(function(){ _navTimer=null; hideNav(); }, 80);
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+   OVERLAY CONTROLS
+═══════════════════════════════════════════════════════════════════════════ */
+var OverlayControls = {
+  _hidden: true,
+  _applyTo: function(el){
+    var vis = this._hidden ? 'visibility:hidden!important' : 'visibility:visible!important';
+    var ch = el.children;
+    if(ch[CFG.OVERLAY_MUTE_IDX]) ch[CFG.OVERLAY_MUTE_IDX].style.cssText = vis;
+    if(ch[CFG.OVERLAY_INFO_IDX]) ch[CFG.OVERLAY_INFO_IDX].style.cssText = vis;
+  },
+  register: function(el){ this._applyTo(el); },
+  _applyAll: function(){
+    var self = this;
+    document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el){ self._applyTo(el); });
+  },
+  hide:     function(){ this._hidden=true;  this._applyAll(); },
+  show:     function(){ this._hidden=false; this._applyAll(); },
+  toggle:   function(){ this._hidden ? this.show() : this.hide(); return !this._hidden; },
+  isHidden: function(){ return this._hidden; },
+};
 
-  var navObs=new MutationObserver(scheduleNav);
-  navObs.observe(document.documentElement,{childList:true,subtree:true});
-  [0,300,800,2000].forEach(function(t){ setTimeout(hideNav,t); });
-  setTimeout(hideLoginBanners, 1000);
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIDEO WATCHER
+   Scans for new overlays. Also attaches a playing listener to every video
+   so we can post video_playing and refresh the active video ref.
+═══════════════════════════════════════════════════════════════════════════ */
+var VideoWatcher = {
+  _timer: null,
+  init: function(){
+    var self = this;
+    new MutationObserver(function(){ self.schedule(); })
+      .observe(document.documentElement,{childList:true,subtree:true});
+    this.scan();
+    LOG.info('VideoWatcher ready');
+  },
+  schedule: function(){
+    var self = this;
+    if(this._timer) return;
+    this._timer = setTimeout(function(){ self._timer=null; self.scan(); }, CFG.VIDEO_DEBOUNCE);
+  },
+  scan: function(){
+    var overlays = 0, videos = 0;
 
-  /* ── overlay + video watching ────────────────────────────────── */
-  var _vidTimer=null;
-  function scheduleVideos(){
-    if(_vidTimer)return;
-    _vidTimer=setTimeout(function(){ _vidTimer=null; watchVideos(); }, 120);
-  }
-
-  function watchVideos(){
     document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el){
-      if(el.__rwOverlay)return; el.__rwOverlay=true;
-      var ch=el.children;
-      for(var i=0;i<ch.length;i++){
-        ch[i].style.cssText='visibility:hidden!important';
-      }
+      if(el.__rwOverlay) return; el.__rwOverlay = true;
+      OverlayControls.register(el);
+      overlays++;
     });
+
     document.querySelectorAll('video').forEach(function(v){
-      if(v.__rwWatched)return; v.__rwWatched=true;
-      v.addEventListener('playing',     function(){ post({type:'video_playing'}); });
-      v.addEventListener('volumechange',function(){ pollAudioState(); });
+      if(v.__rwWatched) return; v.__rwWatched = true;
+      v.addEventListener('playing', function(){
+        post({type:'video_playing'});
+        ActiveVideo.refresh();
+        AudioState.poll();
+      });
+      v.addEventListener('volumechange', function(){ AudioState.poll(); });
+      videos++;
     });
-  }
 
-  new MutationObserver(scheduleVideos)
-    .observe(document.documentElement,{childList:true,subtree:true});
-  watchVideos();
+    if(overlays||videos) LOG.info('scan: overlays='+overlays+' videos='+videos);
+  },
+};
 
-  /* ── audio state indicator ───────────────────────────────────── */
-  var _statePill=null;
-  var STATE={
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUDIO STATE
+═══════════════════════════════════════════════════════════════════════════ */
+var AudioState = {
+  _pill: null,
+  _states: {
     WAITING:{ label:'⏳ waiting', bg:'rgba(80,80,80,0.85)',  border:'rgba(255,255,255,0.25)' },
     MUTED:  { label:'🔇 muted',   bg:'rgba(180,30,30,0.85)', border:'rgba(255,100,100,0.5)'  },
     LIVE:   { label:'🔊 live',    bg:'rgba(20,140,60,0.85)', border:'rgba(80,255,130,0.5)'   },
-  };
+  },
+  setPill: function(el){ this._pill = el; },
+  set: function(key){
+    if(!this._pill) return;
+    var s = this._states[key]||this._states.WAITING;
+    this._pill.textContent=s.label;
+    this._pill.style.background=s.bg;
+    this._pill.style.borderColor=s.border;
+  },
+  poll: function(){
+    var v = ActiveVideo.get();
+    if(!v){ this.set('WAITING'); return; }
+    this.set((v.muted||v.volume===0)?'MUTED':'LIVE');
+  },
+  startPolling: function(){
+    var self = this;
+    setInterval(function(){ self.poll(); }, CFG.AUDIO_POLL);
+  },
+};
 
-  function setPillState(key){
-    if(!_statePill)return;
-    var s=STATE[key]||STATE.WAITING;
-    _statePill.textContent=s.label;
-    _statePill.style.background=s.bg;
-    _statePill.style.borderColor=s.border;
-  }
-
-  function pollAudioState(){
-    var vid=document.querySelector('video');
-    if(!vid){ setPillState('WAITING'); return; }
-    setPillState((vid.muted||vid.volume===0)?'MUTED':'LIVE');
-  }
-  setInterval(pollAudioState, 800);
-
-  /* ── test button ─────────────────────────────────────────────── */
-  function fireClickAt(x,y,target){
-    var opts={bubbles:true,cancelable:true,view:window,
-              clientX:x,clientY:y,screenX:x,screenY:y};
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAP ENGINE
+═══════════════════════════════════════════════════════════════════════════ */
+var TapEngine = {
+  fire: function(x,y,target){
+    var opts={bubbles:true,cancelable:true,view:window,clientX:x,clientY:y,screenX:x,screenY:y};
     try{
-      var touch=new Touch({identifier:1,target:target,
-                            clientX:x,clientY:y,screenX:x,screenY:y,
-                            pageX:x,pageY:y,radiusX:1,radiusY:1,
-                            rotationAngle:0,force:1});
-      var tOpts={bubbles:true,cancelable:true,touches:[touch],
-                 targetTouches:[touch],changedTouches:[touch]};
+      var touch=new Touch({identifier:1,target:target,clientX:x,clientY:y,screenX:x,screenY:y,
+                           pageX:x,pageY:y,radiusX:1,radiusY:1,rotationAngle:0,force:1});
+      var tOpts={bubbles:true,cancelable:true,touches:[touch],targetTouches:[touch],changedTouches:[touch]};
       target.dispatchEvent(new TouchEvent('touchstart',tOpts));
-      target.dispatchEvent(new TouchEvent('touchend',
-        Object.assign({},tOpts,{touches:[],targetTouches:[]})));
+      target.dispatchEvent(new TouchEvent('touchend',Object.assign({},tOpts,{touches:[],targetTouches:[]})));
     }catch(e){}
     target.dispatchEvent(new PointerEvent('pointerdown',opts));
     target.dispatchEvent(new PointerEvent('pointerup',  opts));
     target.dispatchEvent(new MouseEvent('click',        opts));
-  }
+    LOG.info('tap at',x.toFixed(0)+','+y.toFixed(0));
+  },
+  tapOverlay: function(){
+    // Tap the overlay that belongs to the current (visible) slide
+    var v = ActiveVideo.get();
+    var overlay = null;
 
-  function tapOverlay(){
-    var overlay=document.querySelector('[id^="clipsoverlay"]');
-    if(!overlay){ post({type:'test_tap',status:'no_overlay'}); return; }
-    var r=overlay.getBoundingClientRect();
-    var cx=r.left+r.width/2, cy=r.top+r.height/2;
-    fireClickAt(cx,cy,overlay);
+    if(v){
+      // Walk up from the video to find the clipsoverlay in the same slide
+      var p = v.parentElement;
+      for(var i=0; i<15; i++){
+        if(!p) break;
+        var o = p.querySelector('[id^="clipsoverlay"]');
+        if(o){ overlay = o; break; }
+        p = p.parentElement;
+      }
+    }
+    // Fallback: first overlay in DOM
+    if(!overlay) overlay = document.querySelector('[id^="clipsoverlay"]');
+
+    if(!overlay){ post({type:'test_tap',status:'no_overlay'}); LOG.warn('no overlay'); return; }
+
+    var r  = overlay.getBoundingClientRect();
+    var cx = r.left+r.width/2;
+    var cy = r.top+r.height/2;
+    this.fire(cx,cy,overlay);
     post({type:'test_tap',status:'fired',x:cx,y:cy,overlayId:overlay.id});
-    setTimeout(pollAudioState,120);
-  }
+    setTimeout(function(){ ActiveVideo.refresh(); AudioState.poll(); },120);
+  },
+};
 
-  function addTestUI(){
-    if(document.getElementById('__rw_test_btn'))return;
-    var btn=document.createElement('button');
-    btn.id='__rw_test_btn';
-    btn.textContent='🔊 TAP TEST';
-    btn.style.cssText=[
-      'position:fixed','top:60px','left:12px','z-index:2147483647',
-      'background:rgba(0,0,0,0.75)','color:#fff',
-      'border:1.5px solid rgba(255,255,255,0.4)','border-radius:8px',
-      'padding:8px 14px','font-size:13px','font-family:system-ui,sans-serif',
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEV PANEL
+═══════════════════════════════════════════════════════════════════════════ */
+var DevPanel = {
+  _bodyEl: null, _logEl: null, _visible: true,
+
+  init: function(){
+    if(CFG.ENV !== 'dev') return;
+    if(document.getElementById('__rw_panel')) return;
+    var self = this;
+
+    var panel = document.createElement('div');
+    panel.id = '__rw_panel';
+    panel.style.cssText = [
+      'position:fixed','top:10px','right:10px','width:300px','z-index:2147483647',
+      'background:rgba(10,10,20,0.93)','border:1px solid rgba(255,255,255,0.15)',
+      'border-radius:10px','overflow:hidden','font-family:system-ui,monospace',
+      'font-size:11px','color:#fff','box-shadow:0 4px 24px rgba(0,0,0,0.7)',
+    ].join(';');
+
+    /* title bar */
+    var tb = this._row('rgba(255,255,255,0.07)','6px 10px');
+    tb.style.justifyContent = 'space-between';
+    var title = document.createElement('span');
+    title.textContent = '🛠 RW DEV';
+    title.style.cssText = 'font-weight:700;font-size:12px';
+    var badge = document.createElement('span');
+    badge.textContent = CFG.ENV.toUpperCase();
+    badge.style.cssText = 'background:rgba(100,200,100,0.25);border-radius:4px;padding:1px 6px;font-size:10px;color:#7dff7d';
+    var right = document.createElement('span');
+    right.style.cssText = 'display:flex;gap:6px;align-items:center';
+    right.appendChild(badge);
+    right.appendChild(this._btn('HIDE',  function(){ self._toggleBody(); }));
+    right.appendChild(this._btn('CLEAR', function(){ if(self._logEl) self._logEl.innerHTML=''; }));
+    tb.appendChild(title); tb.appendChild(right);
+    panel.appendChild(tb);
+
+    var body = document.createElement('div');
+    this._bodyEl = body;
+
+    /* row 1: video controls */
+    var r1 = this._row('rgba(255,255,255,0.04)','6px 8px');
+    r1.style.cssText += ';flex-wrap:wrap;gap:6px';
+    r1.appendChild(this._btn('🔊 Tap',    function(){ TapEngine.tapOverlay(); }));
+    r1.appendChild(this._btn('🔇 Mute',   function(){ ActiveVideo.mute(); }));
+    r1.appendChild(this._btn('▶ Play',    function(){ ActiveVideo.play(); }));
+    r1.appendChild(this._btn('⏸ Pause',   function(){ ActiveVideo.pause(); }));
+    r1.appendChild(this._btn('🔄 Reload', function(){ setTimeout(function(){ location.reload(); },200); }));
+    r1.appendChild(this._btn('📋 Post',   function(){ post({type:'dev_ping',ts:Date.now()}); LOG.info('dev_ping'); }));
+    body.appendChild(r1);
+
+    /* row 2: view controls */
+    var r2 = this._row('rgba(255,255,255,0.02)','6px 8px');
+    r2.style.cssText += ';flex-wrap:wrap;gap:6px';
+    var lbl = document.createElement('span');
+    lbl.textContent = 'View:';
+    lbl.style.cssText = 'opacity:0.5;font-size:10px;white-space:nowrap;align-self:center';
+    r2.appendChild(lbl);
+
+    var btnVC = this._btn(this._vcLabel(), function(){
+      OverlayControls.toggle();
+      btnVC.textContent = self._vcLabel();
+    });
+    btnVC.style.minWidth = '140px';
+    r2.appendChild(btnVC);
+
+    var muteHidden = false;
+    r2.appendChild(this._btn('🔇 Icon', function(){
+      muteHidden = !muteHidden;
+      document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el){
+        var ch = el.children[CFG.OVERLAY_MUTE_IDX];
+        if(ch) ch.style.cssText = muteHidden ? 'visibility:hidden!important' : '';
+      });
+    }));
+
+    var infoHidden = false;
+    r2.appendChild(this._btn('ℹ Info', function(){
+      infoHidden = !infoHidden;
+      document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el){
+        var ch = el.children[CFG.OVERLAY_INFO_IDX];
+        if(ch) ch.style.cssText = infoHidden ? 'visibility:hidden!important' : '';
+      });
+    }));
+    body.appendChild(r2);
+
+    /* state row */
+    var sr = this._row('rgba(255,255,255,0.03)','5px 10px');
+    sr.style.gap = '8px';
+    var pill = document.createElement('div');
+    pill.style.cssText = 'border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:3px 10px;font-size:11px;pointer-events:none;transition:background 0.3s,border-color 0.3s';
+    AudioState.setPill(pill);
+    AudioState.poll();
+
+    var counter = document.createElement('span');
+    counter.style.cssText = 'opacity:0.6;font-size:10px';
+    setInterval(function(){
+      var v = ActiveVideo.get();
+      var n = document.querySelectorAll('[id^="clipsoverlay"]').length;
+      // Show transform of current video's container for debugging
+      var transform = 'none';
+      if(v){
+        var p = v.parentElement;
+        for(var i=0;i<10;i++){
+          if(!p) break;
+          if(p.style && p.style.transform){ transform = p.style.transform.slice(0,24); break; }
+          p = p.parentElement;
+        }
+      }
+      counter.textContent = 'ov:'+n+' vid:'+(v?'✓'+(v.paused?'⏸':'▶'):'✗');
+    }, 2000);
+    sr.appendChild(pill); sr.appendChild(counter);
+    body.appendChild(sr);
+
+    /* log */
+    var logEl = document.createElement('div');
+    logEl.style.cssText = 'height:'+CFG.PANEL_HEIGHT+'px;overflow-y:auto;padding:4px 0;font-size:10px;line-height:1.5';
+    LOG.setEl(logEl);
+    this._logEl = logEl;
+    body.appendChild(logEl);
+
+    panel.appendChild(body);
+    (document.body||document.documentElement).appendChild(panel);
+    LOG.info('DevPanel mounted');
+  },
+
+  _vcLabel: function(){ return OverlayControls.isHidden() ? '👁 Show View Controls' : '🙈 Hide View Controls'; },
+  _toggleBody: function(){ this._visible=!this._visible; this._bodyEl.style.display=this._visible?'':'none'; },
+  _row: function(bg,padding){
+    var d=document.createElement('div');
+    d.style.cssText='display:flex;align-items:center;background:'+bg+';padding:'+padding;
+    return d;
+  },
+  _btn: function(label,onClick){
+    var b=document.createElement('button');
+    b.textContent=label;
+    b.style.cssText=[
+      'background:rgba(255,255,255,0.1)','color:#fff',
+      'border:1px solid rgba(255,255,255,0.2)','border-radius:5px',
+      'padding:3px 8px','font-size:10px','font-family:inherit',
       'cursor:pointer','pointer-events:auto',
-      '-webkit-tap-highlight-color:transparent',
+      '-webkit-tap-highlight-color:transparent','white-space:nowrap',
     ].join(';');
-    btn.addEventListener('click',function(e){ e.stopPropagation(); tapOverlay(); });
+    b.addEventListener('click',function(e){ e.stopPropagation(); onClick(); });
+    return b;
+  },
+};
 
-    var pill=document.createElement('div');
-    pill.id='__rw_audio_pill';
-    pill.style.cssText=[
-      'position:fixed','top:60px','left:130px','z-index:2147483647',
-      'color:#fff','border:1.5px solid rgba(255,255,255,0.4)',
-      'border-radius:8px','padding:8px 14px','font-size:13px',
-      'font-family:system-ui,sans-serif','pointer-events:none',
-      'white-space:nowrap','transition:background 0.3s,border-color 0.3s',
-    ].join(';');
-    pill.style.background=STATE.WAITING.bg;
-    pill.style.borderColor=STATE.WAITING.border;
-    pill.textContent=STATE.WAITING.label;
-    _statePill=pill;
+/* ═══════════════════════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════════════════════ */
+VisibilitySpoof.init();
+Router.init();
+NavHider.init();
+VideoWatcher.init();
+AudioState.startPolling();
 
-    var root=document.body||document.documentElement;
-    root.appendChild(btn);
-    root.appendChild(pill);
-    pollAudioState();
-  }
+if(document.body){ DevPanel.init(); }
+else { document.addEventListener('DOMContentLoaded', function(){ DevPanel.init(); }); }
 
-  if(document.body){ addTestUI(); }
-  else{ document.addEventListener('DOMContentLoaded',addTestUI); }
+window.__rwSetEnv = function(env){ CFG.ENV=env; LOG.info('ENV:',env); };
 
-  /* ── ready — disarm startup error listeners ──────────────────── */
-  _startupDone=true;
-  window.removeEventListener('error',              onStartupError);
-  window.removeEventListener('unhandledrejection', onStartupRejection);
-  post({type:'ready'});
+_startupDone = true;
+window.removeEventListener('error',              _onStartupError);
+window.removeEventListener('unhandledrejection', _onStartupRejection);
+post({type:'ready'});
+LOG.info('boot complete');
 
 })(); true;`;
