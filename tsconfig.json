@@ -3,8 +3,17 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "app/_layout.tsx", "app/index.tsx"]
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "app/_layout.tsx",
+    "app/index.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

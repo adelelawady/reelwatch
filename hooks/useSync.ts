@@ -30,8 +30,9 @@ export function useSync({
     if (!mountedRef.current || !username || !roomId) return;
 
     try {
+      const protocol = CONFIG.SERVER_PORT === 443 ? "wss" : "ws";
       const ws = new WebSocket(
-        `ws://${CONFIG.SERVER_IP}:${CONFIG.SERVER_PORT}`,
+        `${protocol}://${CONFIG.SERVER_IP}:${CONFIG.SERVER_PORT}`,
       );
       wsRef.current = ws;
 
