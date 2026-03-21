@@ -1,12 +1,13 @@
 export const CONFIG = {
-  SERVER_IP: "192.168.8.5",
-  SERVER_PORT: 3001,
+  SERVER_IP: "reelwatch.adelelawady.org",
+  SERVER_PORT: 443,
+
   START_URL: "https://www.instagram.com/reels/DWEzH45guQJ/",
   LOGIN_URL: "https://www.instagram.com/accounts/login/",
   REQUIRE_LOGIN: true,
 
   // ─── DEV FLAGS ───────────────────────────────────────────
-  DEV_MODE: false,
+  DEV_MODE: true,
   DEV_DEFAULT_ROOM: "room1",
   DEV_USERNAME: "devuser",
 } as const;
