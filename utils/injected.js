@@ -15,7 +15,7 @@ export const INJECTED_JS = `(function(){
    CONFIG
 ═══════════════════════════════════════════════════════════════════════════ */
 var CFG = {
-  ENV:               'dev',
+  ENV:               'prod',
   NAV_DEBOUNCE:      80,
   VIDEO_DEBOUNCE:    150,
   AUDIO_POLL:        2000,

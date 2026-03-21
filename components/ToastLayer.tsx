@@ -1,4 +1,4 @@
-import { LinearGradient } from "expo-linear-gradient"; // or 'react-native-linear-gradient'
+import { LinearGradient } from "expo-linear-gradient";
 import { Animated, StyleSheet, Text, View } from "react-native";
 import { Toast } from "../hooks/useToasts";
 
@@ -24,18 +24,23 @@ export function ToastLayer({ toasts }: Props) {
           ]}
         >
           <LinearGradient
-            colors={["#f58529", "#feda77", "#dd2a7b", "#8134af", "#515bd4"]}
+            colors={
+              t.sender === "me"
+                ? ["#007aff", "#0055cc"] // blue for self
+                : ["#f58529", "#dd2a7b", "#8134af"] // IG gradient for friends
+            }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.gradient}
           >
+            {/* Show real name */}
             <Text
               style={[
                 styles.sender,
                 t.sender === "friend" ? styles.friendName : styles.meName,
               ]}
             >
-              {t.sender === "me" ? "You" : "Friend"}
+              {t.senderName}
             </Text>
             <Text style={styles.text}>{t.text}</Text>
           </LinearGradient>
@@ -64,14 +69,12 @@ const styles = StyleSheet.create({
   gradient: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    alignItems: "center",
-    justifyContent: "center",
     borderRadius: 40,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     elevation: 4,
   },
   sender: {
@@ -84,12 +87,8 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  friendName: {
-    color: "#ffeb99",
-  },
-  meName: {
-    color: "#b3e0ff",
-  },
+  friendName: { color: "#ffeb99" },
+  meName: { color: "#cce8ff" },
   text: {
     color: "#fff",
     fontSize: 14,

@@ -11,5 +11,5 @@ export const CONFIG = {
   DEV_USERNAME: "devuser",
 } as const;
 
-export const TOAST_DURATION = 6500;
-export const MAX_TOASTS = 3;
+export const TOAST_DURATION = 8500;
+export const MAX_TOASTS = 5;

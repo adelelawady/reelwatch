@@ -130,7 +130,7 @@ export default function ReelScreen() {
         }, 3000);
       }
       if (msg.type === "comment") {
-        addToast(msg.text, "friend");
+        addToast(msg.text, "friend", msg.from); // ← add msg.from
       }
     },
     [addToast],
@@ -207,7 +207,7 @@ export default function ReelScreen() {
     const text = input.trim();
     if (!text) return;
     sendComment(text);
-    addToast(text, "me");
+    addToast(text, "me", myName);
     setInput("");
   }, [input]);
 
