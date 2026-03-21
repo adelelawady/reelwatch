@@ -1,14 +1,15 @@
-// ─── App-wide config ─────────────────────────────────────────
-// Edit SERVER_IP to your PC's local IP before running
-
 export const CONFIG = {
   SERVER_IP: "192.168.8.5",
   SERVER_PORT: 3001,
-  ROOM: "room1",
   START_URL: "https://www.instagram.com/reels/DWEzH45guQJ/",
   LOGIN_URL: "https://www.instagram.com/accounts/login/",
   REQUIRE_LOGIN: true,
+
+  // ─── DEV FLAGS ───────────────────────────────────────────
+  DEV_MODE: false,
+  DEV_DEFAULT_ROOM: "room1",
+  DEV_USERNAME: "devuser",
 } as const;
 
-export const TOAST_DURATION = 6500; // ms comment toast visible
-export const MAX_TOASTS = 3; // max visible at once
+export const TOAST_DURATION = 6500;
+export const MAX_TOASTS = 3;

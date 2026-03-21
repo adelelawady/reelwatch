@@ -1,54 +1,136 @@
-// Manages WebSocket connection, sends/receives URL + comment events.
-// Returns helpers the screen uses to send and a callback for incoming messages.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CONFIG } from "../constants/config";
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { CONFIG } from '../constants/config';
-
-export type SyncMessage =
-  | { type: 'url_change'; url: string }
-  | { type: 'comment';    text: string; sender: 'friend' };
-
-type Props = {
-  onMessage: (msg: SyncMessage) => void;
+type UseSyncOptions = {
+  username: string;
+  roomId: string;
+  onMessage: (msg: any) => void;
+  onRoomDeleted?: () => void;
+  onRemoteTransferred?: (from: string, to: string) => void;
+  onRoomStateUpdate?: (room: any) => void;
 };
 
-export function useSync({ onMessage }: Props) {
-  const wsRef     = useRef<WebSocket | null>(null);
+export function useSync({
+  username,
+  roomId,
+  onMessage,
+  onRoomDeleted,
+  onRemoteTransferred,
+  onRoomStateUpdate,
+}: UseSyncOptions) {
   const [connected, setConnected] = useState(false);
+  const [registered, setRegistered] = useState(false);
+  const [joined, setJoined] = useState(false);
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimer = useRef<any>(null);
+  const mountedRef = useRef(true);
+
+  const connect = useCallback(() => {
+    if (!mountedRef.current || !username || !roomId) return;
+
+    try {
+      const ws = new WebSocket(
+        `ws://${CONFIG.SERVER_IP}:${CONFIG.SERVER_PORT}`,
+      );
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (!mountedRef.current) return;
+        setConnected(true);
+        ws.send(JSON.stringify({ type: "register", name: username }));
+      };
+
+      ws.onclose = () => {
+        if (!mountedRef.current) return;
+        setConnected(false);
+        setRegistered(false);
+        setJoined(false);
+        reconnectTimer.current = setTimeout(() => {
+          if (mountedRef.current) connect();
+        }, 3000);
+      };
+
+      ws.onerror = () => {};
+
+      ws.onmessage = (e) => {
+        if (!mountedRef.current) return;
+        try {
+          const msg = JSON.parse(e.data);
+
+          if (msg.type === "registered") {
+            setRegistered(true);
+            // Immediately join the room after registering
+            ws.send(JSON.stringify({ type: "join", room: roomId }));
+          }
+
+          if (msg.type === "joined") {
+            setJoined(true);
+          }
+
+          if (msg.type === "room_state") {
+            onRoomStateUpdate?.(msg.room);
+          }
+
+          if (msg.type === "room_deleted") {
+            setJoined(false);
+            onRoomDeleted?.();
+          }
+
+          if (msg.type === "remote_transferred") {
+            onRemoteTransferred?.(msg.from, msg.to);
+          }
+
+          // Forward reel sync messages and comments to the screen
+          if (
+            msg.type === "url_change" ||
+            msg.type === "reel_url" ||
+            msg.type === "url" ||
+            msg.type === "comment"
+          ) {
+            onMessage(msg);
+          }
+        } catch {}
+      };
+    } catch {}
+  }, [username, roomId]);
 
   useEffect(() => {
-    const ws = new WebSocket(`ws://${CONFIG.SERVER_IP}:${CONFIG.SERVER_PORT}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join', room: CONFIG.ROOM }));
-      setConnected(true);
+    mountedRef.current = true;
+    connect();
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
     };
-
-    ws.onmessage = ({ data }) => {
-      try {
-        const msg = JSON.parse(data);
-
-        if (msg.type === 'url')     onMessage({ type: 'url_change', url: msg.url });
-        if (msg.type === 'comment') onMessage({ type: 'comment', text: msg.text, sender: 'friend' });
-      } catch {}
-    };
-
-    ws.onerror  = () => setConnected(false);
-    ws.onclose  = () => setConnected(false);
-
-    return () => ws.close();
-  }, []);
+  }, [username, roomId]);
 
   const sendUrl = useCallback((url: string) => {
-    wsRef.current?.readyState === 1 &&
-      wsRef.current.send(JSON.stringify({ type: 'url', url, room: CONFIG.ROOM }));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "reel_url", url }));
+    }
   }, []);
 
   const sendComment = useCallback((text: string) => {
-    wsRef.current?.readyState === 1 &&
-      wsRef.current.send(JSON.stringify({ type: 'comment', text, room: CONFIG.ROOM }));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "comment", text }));
+    }
   }, []);
 
-  return { connected, sendUrl, sendComment };
+  const transferRemote = useCallback((toName: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({ type: "transfer_remote", to: toName }),
+      );
+    }
+  }, []);
+
+  return {
+    connected,
+    registered,
+    joined,
+    sendUrl,
+    sendComment,
+    transferRemote,
+  };
 }
