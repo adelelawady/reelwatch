@@ -18,35 +18,24 @@ import { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { CONFIG } from "../constants/config";
 import { RoomInfo, useRooms } from "../hooks/useRooms";
-import { AUTH_CHECK_JS } from "../utils/authInjected";
+import {
+    AUTH_CHECK_JS,
+    LOGOUT_JS,
+    POST_LOGOUT_CHECK_JS,
+} from "../utils/authInjected";
 
 type Phase =
   | "checking_login"
+  | "logging_out"
   | "need_login"
   | "enter_name"
   | "lobby"
   | "create_room";
 
-// ── Instagram logout injected script ─────────────────────────
-const LOGOUT_JS = `
-(function() {
-  try {
-    // Clear all IG cookies
-    document.cookie.split(';').forEach(function(c) {
-      document.cookie = c.replace(/^ +/, '')
-        .replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/;domain=.instagram.com');
-    });
-    // Navigate to logout endpoint
-    window.location.href = 'https://www.instagram.com/accounts/logout/';
-  } catch(e) {}
-})();
-true;
-`;
-
-// Generates a short unique suffix so fallback names never collide
 function uniqueSuffix(): string {
-  return Math.random().toString(36).slice(2, 6); // e.g. "k3z9"
+  return Math.random().toString(36).slice(2, 6);
 }
+
 export default function EntranceScreen() {
   const router = useRouter();
   const webviewRef = useRef<WebView>(null);
@@ -54,6 +43,7 @@ export default function EntranceScreen() {
   const [phase, setPhase] = useState<Phase>(
     CONFIG.DEV_MODE ? "enter_name" : "checking_login",
   );
+
   const [igUsername, setIgUsername] = useState(
     CONFIG.DEV_MODE ? CONFIG.DEV_USERNAME : "",
   );
@@ -68,20 +58,22 @@ export default function EntranceScreen() {
   const [newRoomRemote, setNewRoomRemote] = useState(false);
   const [roomError, setRoomError] = useState("");
 
-  // Only set after name is confirmed — triggers useRooms connection
+  // Active username — only set after name confirmed, triggers WS connection
   const [activeUsername, setActiveUsername] = useState(
     CONFIG.DEV_MODE ? CONFIG.DEV_USERNAME : "",
   );
 
-  // Instagram account info shown in lobby
-  const [igStats, setIgStats] = useState<{
-    username: string;
-    fullName?: string;
-  } | null>(null);
+  // Instagram account info shown in lobby header
+  const [igStats, setIgStats] = useState<{ username: string } | null>(null);
+
+  // Track logout nav so onNavStateChange knows what's happening
+  const isLoggingOut = useRef(false);
+  const logoutConfirmTimer = useRef<any>(null);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const devAutoJoinDone = useRef(false);
 
+  // ─── Fade transition ──────────────────────────────────────
   const fadeTransition = useCallback(
     (next: Phase) => {
       Animated.timing(fadeAnim, {
@@ -100,7 +92,16 @@ export default function EntranceScreen() {
     [fadeAnim],
   );
 
-  // ─── Rooms hook ────────────────────────────────────────────
+  // ─── Reset auth state ─────────────────────────────────────
+  const resetAuthState = useCallback(() => {
+    setIgStats(null);
+    setIgUsername("");
+    setDisplayName("");
+    setActiveUsername("");
+    devAutoJoinDone.current = false;
+  }, []);
+
+  // ─── Rooms hook ───────────────────────────────────────────
   const { rooms, connected, registered, createRoom, joinRoom } = useRooms({
     username: activeUsername,
     onJoined: (roomId) => {
@@ -113,7 +114,7 @@ export default function EntranceScreen() {
     onError: (msg) => setServerError(msg),
   });
 
-  // ─── DEV auto-join ─────────────────────────────────────────
+  // ─── DEV auto-join ────────────────────────────────────────
   useEffect(() => {
     if (!CONFIG.DEV_MODE || !registered || devAutoJoinDone.current) return;
     const t = setTimeout(() => {
@@ -126,80 +127,115 @@ export default function EntranceScreen() {
     return () => clearTimeout(t);
   }, [registered, rooms.length]);
 
-  // ─── WebView auth result ───────────────────────────────────
-
+  // ─── Handle auth result from WebView ─────────────────────
   const onWebViewMessage = useCallback(
     ({ nativeEvent }: WebViewMessageEvent) => {
       try {
         const msg = JSON.parse(nativeEvent.data);
+
         if (msg.type === "auth_result") {
           if (msg.loggedIn) {
-            // If server gave us a real IG username — use it
-            // If not (cookies existed but username unreadable) —
-            // generate a unique fallback so NAME_TAKEN never fires
             const uname = msg.username
               ? msg.username
               : `user_${uniqueSuffix()}`;
-
             setIgUsername(uname);
             setIgStats({ username: uname });
             setDisplayName(uname);
             fadeTransition("enter_name");
           } else {
-            setIgStats(null);
+            resetAuthState();
             fadeTransition("need_login");
           }
         }
+
+        // Late-arriving username from page data after DOM loads
+        if (msg.type === "auth_username_update") {
+          if (msg.username) {
+            const uname = msg.username;
+            setIgUsername(uname);
+            setIgStats({ username: uname });
+            // Only update displayName if user hasn't edited it yet
+            setDisplayName((prev) => (prev.startsWith("user_") ? uname : prev));
+          }
+        }
+
+        if (msg.type === "logout_complete") {
+          clearTimeout(logoutConfirmTimer.current);
+          isLoggingOut.current = false;
+          resetAuthState();
+          setPhase("need_login");
+        }
       } catch {}
     },
-    [fadeTransition],
+    [fadeTransition, resetAuthState],
   );
 
+  // ─── Navigation state change ──────────────────────────────
   const onNavStateChange = useCallback(
     (navState: any) => {
       if (!navState.url || navState.loading) return;
+      const url = navState.url;
 
-      // Logged out — landed back on login page
-      if (
-        navState.url.includes("/accounts/login") ||
-        navState.url.includes("/accounts/logout")
-      ) {
-        setIgStats(null);
-        setIgUsername("");
-        setDisplayName("");
-        setActiveUsername("");
+      // During active logout — wait for login page then confirm
+      if (isLoggingOut.current) {
+        if (
+          url.includes("/accounts/login") ||
+          url.includes("/accounts/logout")
+        ) {
+          // Inject post-logout check to confirm session cleared
+          setTimeout(() => {
+            webviewRef.current?.injectJavaScript(POST_LOGOUT_CHECK_JS);
+          }, 600);
+        }
+        return;
+      }
+
+      // Detect accidental logout (session expired etc.)
+      if (url.includes("/accounts/login") || url.includes("/accounts/logout")) {
+        resetAuthState();
         setPhase("need_login");
         return;
       }
 
-      // Just completed login — re-check auth
+      // Completed login — re-run auth check
       if (
         phase === "need_login" &&
-        navState.url.includes("instagram.com") &&
-        !navState.url.includes("login")
+        url.includes("instagram.com") &&
+        !url.includes("login") &&
+        !url.includes("signup")
       ) {
         setPhase("checking_login");
         setTimeout(() => {
           webviewRef.current?.injectJavaScript(AUTH_CHECK_JS);
-        }, 1200);
+        }, 1500);
       }
     },
-    [phase],
+    [phase, resetAuthState],
   );
 
-  // ─── Logout handler ────────────────────────────────────────
+  // ─── Logout ───────────────────────────────────────────────
   const handleLogout = useCallback(() => {
-    setIgStats(null);
-    setIgUsername("");
-    setDisplayName("");
-    setActiveUsername("");
-    devAutoJoinDone.current = false;
-    // Inject logout into the hidden WebView
-    webviewRef.current?.injectJavaScript(LOGOUT_JS);
-    setTimeout(() => fadeTransition("need_login"), 800);
-  }, [fadeTransition]);
+    isLoggingOut.current = true;
+    setPhase("logging_out");
 
-  // ─── Confirm name ──────────────────────────────────────────
+    // Inject logout script
+    webviewRef.current?.injectJavaScript(LOGOUT_JS);
+
+    // Fallback: if POST_LOGOUT_CHECK_JS never fires after 8s,
+    // force transition to need_login anyway
+    logoutConfirmTimer.current = setTimeout(() => {
+      isLoggingOut.current = false;
+      resetAuthState();
+      setPhase("need_login");
+    }, 8000);
+  }, [resetAuthState]);
+
+  // Cleanup logout timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(logoutConfirmTimer.current);
+  }, []);
+
+  // ─── Confirm display name ─────────────────────────────────
   const confirmName = useCallback(() => {
     const name = displayName.trim();
     if (name.length < 2) {
@@ -219,7 +255,7 @@ export default function EntranceScreen() {
     fadeTransition("lobby");
   }, [displayName]);
 
-  // ─── Create room submit ────────────────────────────────────
+  // ─── Create room ──────────────────────────────────────────
   const submitCreateRoom = useCallback(() => {
     const id = newRoomId.trim();
     if (id.length < 2) {
@@ -239,16 +275,27 @@ export default function EntranceScreen() {
     setPhase("lobby");
   }, [newRoomId, newRoomRemote, createRoom]);
 
+  // ─── WebView source ───────────────────────────────────────
+  // During logout we navigate to the logout URL via LOGOUT_JS,
+  // so keep source as instagram home always — LOGOUT_JS does the nav.
+  const webviewSource =
+    phase === "need_login"
+      ? { uri: CONFIG.LOGIN_URL }
+      : { uri: "https://www.instagram.com/accounts/edit/" };
+
   // ══════════════════════════════════════════════════════════
   return (
     <View style={styles.root}>
-      {/* ── WebView: always mounted, visible only for login ── */}
+      {/* ── WebView — always mounted to preserve cookies ── */}
       <View
         style={[
           styles.webviewContainer,
-          phase === "need_login" && styles.webviewVisible,
+          (phase === "need_login" || phase === "logging_out") &&
+            styles.webviewVisible,
         ]}
-        pointerEvents={phase === "need_login" ? "auto" : "none"}
+        pointerEvents={
+          phase === "need_login" || phase === "logging_out" ? "auto" : "none"
+        }
       >
         {phase === "need_login" && (
           <View style={styles.loginBanner}>
@@ -257,14 +304,10 @@ export default function EntranceScreen() {
             </Text>
           </View>
         )}
+
         <WebView
           ref={webviewRef}
-          source={{
-            uri:
-              phase === "need_login"
-                ? CONFIG.LOGIN_URL
-                : "https://www.instagram.com/",
-          }}
+          source={webviewSource}
           injectedJavaScript={AUTH_CHECK_JS}
           onMessage={onWebViewMessage}
           onNavigationStateChange={onNavStateChange}
@@ -286,6 +329,18 @@ export default function EntranceScreen() {
         </Animated.View>
       )}
 
+      {/* ── Logging out spinner ── */}
+      {phase === "logging_out" && (
+        <Animated.View style={[styles.centered, { opacity: fadeAnim }]}>
+          <Text style={styles.logoEmoji}>🎬</Text>
+          <Text style={styles.logoText}>ReelWatch</Text>
+          <View style={styles.statusRow}>
+            <ActivityIndicator color="rgba(255,255,255,0.5)" size="small" />
+            <Text style={styles.statusText}>Logging out…</Text>
+          </View>
+        </Animated.View>
+      )}
+
       {/* ── Enter name ── */}
       {phase === "enter_name" && (
         <Animated.View style={[styles.centered, { opacity: fadeAnim }]}>
@@ -296,7 +351,7 @@ export default function EntranceScreen() {
             <Text style={styles.logoEmoji}>🎬</Text>
             <Text style={styles.logoText}>ReelWatch</Text>
 
-            {/* ── Instagram account card ── */}
+            {/* Instagram account card */}
             <View style={styles.igCard}>
               <View style={styles.igAvatar}>
                 <Text style={styles.igAvatarText}>
@@ -307,7 +362,6 @@ export default function EntranceScreen() {
                 <Text style={styles.igHandle}>@{igUsername || "unknown"}</Text>
                 <Text style={styles.igVerified}>✓ Instagram verified</Text>
               </View>
-              {/* Logout button */}
               <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                 <Text style={styles.logoutBtnText}>Log out</Text>
               </TouchableOpacity>
@@ -333,7 +387,6 @@ export default function EntranceScreen() {
             />
             {!!nameError && <Text style={styles.errorText}>{nameError}</Text>}
 
-            {/* ── FIX: button has explicit text, correct styles ── */}
             <TouchableOpacity
               style={styles.primaryBtn}
               onPress={confirmName}
@@ -352,7 +405,6 @@ export default function EntranceScreen() {
           <View style={styles.lobbyHeader}>
             <View style={styles.lobbyHeaderLeft}>
               <Text style={styles.logoText}>🎬 ReelWatch</Text>
-              {/* ── Instagram stats row ── */}
               {igStats && (
                 <View style={styles.igStatsRow}>
                   <View style={styles.igStatsDot} />
@@ -411,7 +463,7 @@ export default function EntranceScreen() {
             </View>
           </View>
 
-          {/* Error banner */}
+          {/* Server error banner */}
           {!!serverError && (
             <TouchableOpacity
               style={styles.errorBanner}
@@ -469,9 +521,7 @@ export default function EntranceScreen() {
         </Animated.View>
       )}
 
-      {/* ══════════════════════════════════════════════════════
-          CREATE ROOM MODAL — complete rewrite for visibility
-      ══════════════════════════════════════════════════════ */}
+      {/* ── Create Room Modal ── */}
       <Modal
         visible={phase === "create_room"}
         transparent
@@ -479,30 +529,19 @@ export default function EntranceScreen() {
         onRequestClose={() => setPhase("lobby")}
         statusBarTranslucent
       >
-        {/*
-          KeyboardAvoidingView wraps the whole modal so the keyboard
-          pushes the sheet up on iOS and Android alike.
-        */}
         <KeyboardAvoidingView
           style={styles.modalOuter}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={0}
         >
-          {/* Backdrop tap to dismiss */}
           <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
             onPress={() => setPhase("lobby")}
           />
-
-          {/* Sheet */}
           <View style={styles.modalSheet}>
-            {/* Drag handle */}
             <View style={styles.modalHandle} />
-
             <Text style={styles.modalTitle}>New Room</Text>
 
-            {/* ── Room name input — explicitly styled ── */}
             <Text style={styles.fieldLabel}>Room ID</Text>
             <View style={styles.inputBorder}>
               <TextInput
@@ -526,14 +565,12 @@ export default function EntranceScreen() {
             </View>
             {!!roomError && <Text style={styles.errorText}>{roomError}</Text>}
 
-            {/* ── Remote Control toggle — completely standalone ── */}
             <View style={styles.toggleCard}>
               <TouchableOpacity
                 style={styles.toggleRow}
                 onPress={() => setNewRoomRemote((v) => !v)}
                 activeOpacity={0.7}
               >
-                {/* Checkbox — big, always visible */}
                 <View
                   style={[
                     styles.checkbox,
@@ -542,7 +579,6 @@ export default function EntranceScreen() {
                 >
                   {newRoomRemote && <Text style={styles.checkmark}>✓</Text>}
                 </View>
-
                 <View style={styles.toggleContent}>
                   <Text style={styles.toggleTitle}>🎮 Remote Control</Text>
                   <Text style={styles.toggleDesc}>
@@ -553,7 +589,6 @@ export default function EntranceScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Buttons */}
             <View style={styles.modalBtns}>
               <TouchableOpacity
                 style={styles.cancelBtn}
@@ -562,7 +597,6 @@ export default function EntranceScreen() {
               >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.createBtn}
                 onPress={submitCreateRoom}
@@ -631,7 +665,6 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#080808" },
   fill: { flex: 1 },
 
-  // WebView
   webviewContainer: {
     position: "absolute",
     top: 0,
@@ -643,6 +676,7 @@ const styles = StyleSheet.create({
   },
   webviewVisible: { opacity: 1, zIndex: 10 },
   webview: { flex: 1 },
+
   loginBanner: {
     position: "absolute",
     top: SAFE_TOP,
@@ -661,7 +695,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Centered
   centered: {
     flex: 1,
     alignItems: "center",
@@ -686,7 +719,7 @@ const styles = StyleSheet.create({
   },
   statusText: { color: "rgba(255,255,255,0.4)", fontSize: 15 },
 
-  // ── Instagram card on enter_name screen ──
+  // Instagram card
   igCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -731,7 +764,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
   },
-  // Standard input used on enter_name screen
   input: {
     backgroundColor: "rgba(255,255,255,0.09)",
     borderWidth: 1.5,
@@ -763,8 +795,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 0.3,
-    // Android: explicit lineHeight prevents text clipping
     lineHeight: 20,
   },
 
@@ -826,7 +856,6 @@ const styles = StyleSheet.create({
   iconBtnRed: { backgroundColor: "rgba(244,67,54,0.15)" },
   iconBtnText: { color: "#fff", fontSize: 14 },
 
-  // Error banner
   errorBanner: {
     backgroundColor: "rgba(244,67,54,0.12)",
     borderWidth: 1,
@@ -837,7 +866,6 @@ const styles = StyleSheet.create({
   },
   errorBannerText: { color: "#f44336", fontSize: 13 },
 
-  // Room list
   roomList: { flex: 1 },
   roomListContent: { padding: 14, paddingBottom: 20, gap: 10 },
   sectionLabel: {
@@ -856,7 +884,6 @@ const styles = StyleSheet.create({
   },
   emptySubText: { color: "rgba(255,255,255,0.18)", fontSize: 14 },
 
-  // Room card
   roomCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 14,
@@ -904,7 +931,6 @@ const styles = StyleSheet.create({
   },
   joinBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  // FAB
   fab: {
     margin: 16,
     backgroundColor: "#007aff",
@@ -925,19 +951,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // ══════════════════════════════════════════════════════════
-  // CREATE ROOM MODAL — fully rewritten for visibility
-  // ══════════════════════════════════════════════════════════
-  modalOuter: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
+  // Modal
+  modalOuter: { flex: 1, justifyContent: "flex-end" },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.6)",
   },
   modalSheet: {
-    backgroundColor: "#1c1c1e", // solid — never transparent
+    backgroundColor: "#1c1c1e",
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     paddingTop: 12,
@@ -945,7 +966,6 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 44 : 24,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.12)",
-    // Android elevation so it renders above everything
     elevation: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
@@ -966,26 +986,22 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 4,
   },
-
-  // ── Modal input — highly visible ──
   inputBorder: {
     borderWidth: 1.5,
-    borderColor: "#007aff", // blue border — impossible to miss
+    borderColor: "#007aff",
     borderRadius: 12,
-    backgroundColor: "#2c2c2e", // solid dark bg — never transparent
+    backgroundColor: "#2c2c2e",
     marginBottom: 4,
   },
   modalInput: {
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "ios" ? 14 : 11,
-    color: "#ffffff", // explicit white text
+    color: "#ffffff",
     fontSize: 16,
     minHeight: 50,
   },
-
-  // ── Checkbox toggle — visible card ──
   toggleCard: {
-    backgroundColor: "#2c2c2e", // solid background
+    backgroundColor: "#2c2c2e",
     borderRadius: 12,
     marginTop: 16,
     borderWidth: 1,
@@ -1008,7 +1024,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
-    // Force render on Android
     overflow: "hidden",
   },
   checkboxChecked: {
@@ -1019,7 +1034,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "900",
-    // Android text sometimes clips — force it
     includeFontPadding: false,
     lineHeight: 20,
   },
@@ -1036,13 +1050,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 17,
   },
-
-  // Modal buttons
-  modalBtns: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 20,
-  },
+  modalBtns: { flexDirection: "row", gap: 10, marginTop: 20 },
   cancelBtn: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.08)",
