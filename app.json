@@ -1,25 +1,52 @@
 {
   "expo": {
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      }
+    },
     "name": "ReelWatch",
     "slug": "reelwatch",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "reelwatch",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "backgroundColor": "#000000"
-    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.reelwatch.app"
+      "bundleIdentifier": "com.adelelawady.reelwatch"
     },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#000000"
-      },
-      "package": "com.reelwatch.app",
-      "softwareKeyboardLayoutMode": "adjustNothing"
-    },
-    "plugins": ["expo-router"]
+
+    "package": "com.adelelawady.reelwatch"
+  },
+  "plugins": [
+    "expo-router",
+    [
+      "expo-build-properties",
+      {
+        "android": {
+          "compileSdkVersion": 34,
+          "targetSdkVersion": 34
+        }
+      }
+    ]
+  ],
+  "experiments": {
+    "typedRoutes": true
+  },
+  "updates": {
+    "url": "https://reelwatch.adelelawady.org/app/",
+    "enabled": true,
+    "checkAutomatically": "ON_LOAD",
+    "fallbackToCacheTimeout": 3000
+  },
+  "runtimeVersion": {
+    "policy": "sdkVersion"
   }
 }
