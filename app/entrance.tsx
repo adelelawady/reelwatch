@@ -43,6 +43,10 @@ const LOGOUT_JS = `
 true;
 `;
 
+// Generates a short unique suffix so fallback names never collide
+function uniqueSuffix(): string {
+  return Math.random().toString(36).slice(2, 6); // e.g. "k3z9"
+}
 export default function EntranceScreen() {
   const router = useRouter();
   const webviewRef = useRef<WebView>(null);
@@ -123,13 +127,20 @@ export default function EntranceScreen() {
   }, [registered, rooms.length]);
 
   // ─── WebView auth result ───────────────────────────────────
+
   const onWebViewMessage = useCallback(
     ({ nativeEvent }: WebViewMessageEvent) => {
       try {
         const msg = JSON.parse(nativeEvent.data);
         if (msg.type === "auth_result") {
           if (msg.loggedIn) {
-            const uname = msg.username || "instagram_user";
+            // If server gave us a real IG username — use it
+            // If not (cookies existed but username unreadable) —
+            // generate a unique fallback so NAME_TAKEN never fires
+            const uname = msg.username
+              ? msg.username
+              : `user_${uniqueSuffix()}`;
+
             setIgUsername(uname);
             setIgStats({ username: uname });
             setDisplayName(uname);

@@ -1,6 +1,3 @@
-// Instagram-style reel loading placeholder
-// Shows while video is loading, hides with fade when video starts playing
-
 import { useEffect, useRef } from "react";
 import { Animated, Dimensions, StyleSheet, View } from "react-native";
 
@@ -8,7 +5,6 @@ const { width, height } = Dimensions.get("window");
 
 type Props = { visible: boolean };
 
-// Shimmer bar component
 function Shimmer({ style }: { style: any }) {
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -55,33 +51,25 @@ export function ReelPlaceholder({ visible }: Props) {
   return (
     <Animated.View
       style={[styles.container, { opacity: fadeAnim }]}
-      pointerEvents={visible ? "none" : "none"}
+      pointerEvents="none" // always none — never block touches
     >
-      {/* Dark background like Instagram */}
       <View style={styles.bg} />
-
-      {/* Shimmer video area */}
       <Shimmer style={styles.videoArea} />
 
-      {/* Bottom overlay — username, caption, audio */}
       <View style={styles.bottomBar}>
-        {/* Avatar + username row */}
         <View style={styles.userRow}>
           <Shimmer style={styles.avatar} />
           <Shimmer style={styles.username} />
           <Shimmer style={styles.followBtn} />
         </View>
-        {/* Caption lines */}
         <Shimmer style={styles.captionLine1} />
         <Shimmer style={styles.captionLine2} />
-        {/* Audio row */}
         <View style={styles.audioRow}>
           <Shimmer style={styles.audioIcon} />
           <Shimmer style={styles.audioText} />
         </View>
       </View>
 
-      {/* Right side action buttons */}
       <View style={styles.rightBar}>
         <Shimmer style={styles.actionBtn} />
         <Shimmer style={styles.actionLabel} />
@@ -98,7 +86,7 @@ export function ReelPlaceholder({ visible }: Props) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 50,
+    zIndex: 5, // ← was 50, now below overlay (zIndex 20 in reel.tsx)
   },
   bg: {
     ...StyleSheet.absoluteFillObject,
@@ -107,10 +95,8 @@ const styles = StyleSheet.create({
   videoArea: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#222",
-    borderRadius: 0,
   },
 
-  // Bottom left: user info + caption
   bottomBar: {
     position: "absolute",
     bottom: 80,
@@ -174,7 +160,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#333",
   },
 
-  // Right side action buttons
   rightBar: {
     position: "absolute",
     right: 14,

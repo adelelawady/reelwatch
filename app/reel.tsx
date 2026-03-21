@@ -1,10 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-    Animated,
-    StyleSheet,
-    View
-} from "react-native";
+import { Animated, StyleSheet, View } from "react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 
 import { ReelPlaceholder } from "../components/ReelPlaceholder";
@@ -226,7 +222,7 @@ export default function ReelScreen() {
   // ══════════════════════════════════════════════════════════
   return (
     <View style={styles.container}>
-      {/* WebView — full screen, completely unobstructed */}
+      {/* WebView — always at the very bottom */}
       <WebView
         ref={webviewRef}
         source={{ uri: CONFIG.START_URL }}
@@ -243,8 +239,14 @@ export default function ReelScreen() {
         mediaPlaybackRequiresUserAction={false}
       />
 
+      {/*
+        Placeholder sits above WebView (zIndex 5)
+        but BELOW all UI controls (zIndex 10+).
+        When video starts playing hidePlaceholder() removes it.
+      */}
       <ReelPlaceholder visible={showPlaceholder} />
 
+      {/* All UI controls — always rendered above placeholder */}
       {loaded && (
         <View style={styles.overlay} pointerEvents="box-none">
           <TopBar
@@ -289,9 +291,11 @@ export default function ReelScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
+
+  // zIndex 20 — sits above ReelPlaceholder (which defaults to ~zIndex 1)
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
+    zIndex: 20,
     pointerEvents: "box-none",
   } as any,
 });
