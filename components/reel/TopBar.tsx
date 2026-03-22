@@ -103,14 +103,14 @@ export function TopBar({
           />
         </TouchableOpacity>
 
-        {/* Dev panel toggle — shows/hides the injected JS panel 
+         Dev panel toggle — shows/hides the injected JS panel 
         <TouchableOpacity
           style={[styles.floatBtn, devOn && styles.devBtnOn]}
           onPress={handleDev}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={styles.floatBtnText}>🛠</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
     </>
   );
