@@ -386,85 +386,127 @@ var TapEngine = {
    DEV PANEL
 ═══════════════════════════════════════════════════════════════════════════ */
 var DevPanel = {
-  _bodyEl: null, _logEl: null, _visible: true,
+  _bodyEl: null,
+  _logEl: null,
+  _visible: false,
+  _currentView: 'main',   // 'main' or 'creator'
+  _mainView: null,
+  _creatorView: null,
 
-  init: function(){
-    if(CFG.ENV !== 'dev') return;
-    if(document.getElementById('__rw_panel')) return;
+  init: function() {
+    if (CFG.ENV !== 'dev') return;
+    if (document.getElementById('__rw_panel')) return;
     var self = this;
 
     var panel = document.createElement('div');
     panel.id = '__rw_panel';
     panel.style.cssText = [
-      'position:fixed','top:10px','right:10px','width:300px','z-index:2147483647',
-      'background:rgba(10,10,20,0.93)','border:1px solid rgba(255,255,255,0.15)',
-      'border-radius:10px','overflow:hidden','font-family:system-ui,monospace',
-      'font-size:11px','color:#fff','box-shadow:0 4px 24px rgba(0,0,0,0.7)',
+      'position:fixed',
+      'top:90px',
+      'right:10px',
+      'width:300px',
+      'z-index:2147483647',
+      'background:rgba(10,10,20,0.93)',
+      'border:1px solid rgba(255,255,255,0.15)',
+      'border-radius:10px',
+      'overflow:hidden',
+      'font-family:system-ui,monospace',
+      'font-size:11px',
+      'color:#fff',
+      'box-shadow:0 4px 24px rgba(0,0,0,0.7)',
+      'display:none',
     ].join(';');
 
-    var tb = this._row('rgba(255,255,255,0.07)','6px 10px');
+    // ── Title bar (unchanged) ─────────────────────────────
+    var tb = this._row('rgba(255,255,255,0.07)', '6px 10px');
     tb.style.justifyContent = 'space-between';
+    tb.style.cursor = 'pointer';
+
     var title = document.createElement('span');
     title.textContent = '🛠 RW DEV';
     title.style.cssText = 'font-weight:700;font-size:12px';
+
     var badge = document.createElement('span');
     badge.textContent = CFG.ENV.toUpperCase();
     badge.style.cssText = 'background:rgba(100,200,100,0.25);border-radius:4px;padding:1px 6px;font-size:10px;color:#7dff7d';
+
     var right = document.createElement('span');
     right.style.cssText = 'display:flex;gap:6px;align-items:center';
     right.appendChild(badge);
-    right.appendChild(this._btn('HIDE',  function(){ self._toggleBody(); }));
-    right.appendChild(this._btn('CLEAR', function(){ if(self._logEl) self._logEl.innerHTML=''; }));
-    tb.appendChild(title); tb.appendChild(right);
+    right.appendChild(this._btn('CLEAR', function() {
+      if (self._logEl) self._logEl.innerHTML = '';
+    }));
+
+    tb.addEventListener('click', function() {
+      self._toggleBody();
+    });
+
+    tb.appendChild(title);
+    tb.appendChild(right);
     panel.appendChild(tb);
 
+    // ── Body container (holds main and creator views) ─────
     var body = document.createElement('div');
+    body.style.display = 'none'; // collapsed initially
     this._bodyEl = body;
 
-    var r1 = this._row('rgba(255,255,255,0.04)','6px 8px');
-    r1.style.cssText += ';flex-wrap:wrap;gap:6px';
-    r1.appendChild(this._btn('🔊 Tap',    function(){ TapEngine.tapOverlay(); }));
-    r1.appendChild(this._btn('🔇 Mute',   function(){ ActiveVideo.mute(); }));
-    r1.appendChild(this._btn('▶ Play',    function(){ ActiveVideo.play(); }));
-    r1.appendChild(this._btn('⏸ Pause',   function(){ ActiveVideo.pause(); }));
-    r1.appendChild(this._btn('🔄 Reload', function(){ setTimeout(function(){ location.reload(); },200); }));
-    r1.appendChild(this._btn('📋 Post',   function(){ post({type:'dev_ping',ts:Date.now()}); LOG.info('dev_ping'); }));
-    body.appendChild(r1);
+    // ----- MAIN VIEW (all original controls + rearranged buttons) -----
+    var mainView = document.createElement('div');
+    mainView.id = '__rw_main_view';
+    this._mainView = mainView;
 
-    var r2 = this._row('rgba(255,255,255,0.02)','6px 8px');
-    r2.style.cssText += ';flex-wrap:wrap;gap:6px';
+    // ---- Row 1: video controls (grid 3x2, compact) ----
+    var r1 = this._row('rgba(255,255,255,0.04)', '6px 8px');
+    r1.style.cssText += ';display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-items:center;';
+    r1.appendChild(this._btn('🔊 Tap', function() { TapEngine.tapOverlay(); }));
+    r1.appendChild(this._btn('🔇 Mute', function() { ActiveVideo.mute(); }));
+    r1.appendChild(this._btn('▶ Play', function() { ActiveVideo.play(); }));
+    r1.appendChild(this._btn('⏸ Pause', function() { ActiveVideo.pause(); }));
+    r1.appendChild(this._btn('🔄 Reload', function() { setTimeout(function() { location.reload(); }, 200); }));
+    r1.appendChild(this._btn('📋 Post', function() { post({ type: 'dev_ping', ts: Date.now() }); LOG.info('dev_ping'); }));
+    mainView.appendChild(r1);
+
+    // ---- Row 2: view controls + extra toggles + CREATOR BUTTON (compact flex) ----
+    var r2 = this._row('rgba(255,255,255,0.02)', '6px 8px');
+    r2.style.cssText += ';display:flex;flex-wrap:wrap;gap:5px;align-items:center;';
     var lbl = document.createElement('span');
     lbl.textContent = 'View:';
     lbl.style.cssText = 'opacity:0.5;font-size:10px;white-space:nowrap;align-self:center';
     r2.appendChild(lbl);
 
-    var btnVC = this._btn(this._vcLabel(), function(){
+    var btnVC = this._btn(this._vcLabel(), function() {
       OverlayControls.toggle();
       btnVC.textContent = self._vcLabel();
     });
-    btnVC.style.minWidth = '140px';
+    btnVC.style.minWidth = '130px';
     r2.appendChild(btnVC);
 
     var muteHidden = false;
-    r2.appendChild(this._btn('🔇 Icon', function(){
+    r2.appendChild(this._btn('🔇 Icon', function() {
       muteHidden = !muteHidden;
-      document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el){
+      document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el) {
         var ch = el.children[CFG.OVERLAY_MUTE_IDX];
-        if(ch) ch.style.cssText = muteHidden ? 'visibility:hidden!important' : '';
+        if (ch) ch.style.cssText = muteHidden ? 'visibility:hidden!important' : '';
       });
     }));
 
     var infoHidden = false;
-    r2.appendChild(this._btn('ℹ Info', function(){
+    r2.appendChild(this._btn('ℹ Info', function() {
       infoHidden = !infoHidden;
-      document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el){
+      document.querySelectorAll('[id^="clipsoverlay"]').forEach(function(el) {
         var ch = el.children[CFG.OVERLAY_INFO_IDX];
-        if(ch) ch.style.cssText = infoHidden ? 'visibility:hidden!important' : '';
+        if (ch) ch.style.cssText = infoHidden ? 'visibility:hidden!important' : '';
       });
     }));
-    body.appendChild(r2);
 
-    var sr = this._row('rgba(255,255,255,0.03)','5px 10px');
+    // NEW BUTTON: Show Creator Info (triggers creator view)
+    r2.appendChild(this._btn('🎨 Creator', function() {
+      self._showCreatorView();
+    }));
+    mainView.appendChild(r2);
+
+    // ---- Row 3: audio pill + overlay/video counter (unchanged) ----
+    var sr = this._row('rgba(255,255,255,0.03)', '5px 10px');
     sr.style.gap = '8px';
     var pill = document.createElement('div');
     pill.style.cssText = 'border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:3px 10px;font-size:11px;pointer-events:none;transition:background 0.3s,border-color 0.3s';
@@ -473,43 +515,144 @@ var DevPanel = {
 
     var counter = document.createElement('span');
     counter.style.cssText = 'opacity:0.6;font-size:10px';
-    setInterval(function(){
+    setInterval(function() {
       var v = ActiveVideo.get();
       var n = document.querySelectorAll('[id^="clipsoverlay"]').length;
-      counter.textContent = 'ov:'+n+' vid:'+(v?'✓'+(v.paused?'⏸':'▶'):'✗');
+      counter.textContent = 'ov:' + n + ' vid:' + (v ? '✓' + (v.paused ? '⏸' : '▶') : '✗');
     }, 2000);
-    sr.appendChild(pill); sr.appendChild(counter);
-    body.appendChild(sr);
+    sr.appendChild(pill);
+    sr.appendChild(counter);
+    mainView.appendChild(sr);
 
+    // Log area (height defined by CFG.PANEL_HEIGHT)
     var logEl = document.createElement('div');
-    logEl.style.cssText = 'height:'+CFG.PANEL_HEIGHT+'px;overflow-y:auto;padding:4px 0;font-size:10px;line-height:1.5';
+    logEl.style.cssText = 'height:' + CFG.PANEL_HEIGHT + 'px;overflow-y:auto;padding:4px 0;font-size:10px;line-height:1.5';
     LOG.setEl(logEl);
     this._logEl = logEl;
-    body.appendChild(logEl);
+    mainView.appendChild(logEl);
 
+    // ----- CREATOR VIEW (no name, cool info, return button) -----
+    var creatorView = document.createElement('div');
+    creatorView.id = '__rw_creator_view';
+    creatorView.style.cssText = 'display:none; flex-direction:column; background:rgba(10,10,20,0.96); padding:12px; gap:12px; overflow-y:auto;';
+    this._creatorView = creatorView;
+
+    // Cool creator info card (no name)
+    var infoCard = document.createElement('div');
+    infoCard.style.cssText = 'background:rgba(255,255,255,0.05); border-radius:12px; padding:14px; text-align:center;';
+    infoCard.innerHTML = \`
+      <div style="font-size:28px; margin-bottom:8px;">🎨✨</div>
+      <div style="font-weight:700; font-size:14px; letter-spacing:1px;">RW DEV PANEL</div>
+      <div style="font-size:10px; opacity:0.7; margin:8px 0;">advanced overlay toolkit</div>
+      <hr style="border-color:rgba(255,255,255,0.2); margin:12px 0;">
+      <div style="text-align:left; font-size:11px; line-height:1.6;">
+        ⚡ real-time video controls<br>
+        🎧 audio state monitoring<br>
+        🧩 overlay visibility toggles<br>
+        📡 lightweight & zero bloat<br>
+        🔧 crafted for debugging fluency<br>
+        🖤 no tracking · no names · pure utility
+      </div>
+      <div style="margin-top:12px; font-size:9px; opacity:0.5;">v2.0 · made with 🧠 for rw</div>
+    \`;
+    creatorView.appendChild(infoCard);
+
+    // Return button to go back to main panel
+    var returnBtn = this._btn('←  RETURN TO PANEL', function() {
+      self._showMainView();
+    });
+    returnBtn.style.cssText += ';width:100%; margin-top:8px; font-weight:bold; background:rgba(100,150,200,0.2);';
+    creatorView.appendChild(returnBtn);
+
+    // Append both views to body
+    body.appendChild(mainView);
+    body.appendChild(creatorView);
     panel.appendChild(body);
-    (document.body||document.documentElement).appendChild(panel);
-    LOG.info('DevPanel mounted');
+    (document.body || document.documentElement).appendChild(panel);
+
+    // Store heights to keep panel size consistent when switching views
+    // (ensures no height jump, uses same dimensions as original)
+    setTimeout(function() {
+      var mainH = mainView.offsetHeight;
+      if (mainH) creatorView.style.minHeight = mainH + 'px';
+      creatorView.style.display = 'none';
+      mainView.style.display = '';
+    }, 10);
+
+    LOG.info('DevPanel mounted (collapsed) – compact layout + creator view ready');
   },
 
-  _vcLabel: function(){ return OverlayControls.isHidden() ? '👁 Show View Controls' : '🙈 Hide View Controls'; },
-  _toggleBody: function(){ this._visible=!this._visible; this._bodyEl.style.display=this._visible?'':'none'; },
-  _row: function(bg,padding){
-    var d=document.createElement('div');
-    d.style.cssText='display:flex;align-items:center;background:'+bg+';padding:'+padding;
+  // Show creator view, hide main view
+  _showCreatorView: function() {
+    if (!this._mainView || !this._creatorView) return;
+    this._mainView.style.display = 'none';
+    this._creatorView.style.display = 'flex';
+    this._currentView = 'creator';
+  },
+
+  // Show main view, hide creator view
+  _showMainView: function() {
+    if (!this._mainView || !this._creatorView) return;
+    this._creatorView.style.display = 'none';
+    this._mainView.style.display = '';
+    this._currentView = 'main';
+  },
+
+  // Public toggle (called from native button)
+  togglePanel: function() {
+    var panel = document.getElementById('__rw_panel');
+    if (!panel) return;
+    var isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? '' : 'none';
+    LOG.info('panel', isHidden ? 'shown' : 'hidden');
+  },
+
+  // Toggle body expand/collapse (title bar)
+  _toggleBody: function() {
+    this._visible = !this._visible;
+    this._bodyEl.style.display = this._visible ? '' : 'none';
+    // When expanding, ensure the correct view is shown based on last state
+    if (this._visible) {
+      if (this._currentView === 'creator' && this._creatorView) {
+        this._mainView.style.display = 'none';
+        this._creatorView.style.display = 'flex';
+      } else {
+        if (this._mainView) this._mainView.style.display = '';
+        if (this._creatorView) this._creatorView.style.display = 'none';
+      }
+    }
+  },
+
+  _vcLabel: function() {
+    return OverlayControls.isHidden() ? '👁 Show View Controls' : '🙈 Hide View Controls';
+  },
+
+  _row: function(bg, padding) {
+    var d = document.createElement('div');
+    d.style.cssText = 'display:flex;align-items:center;background:' + bg + ';padding:' + padding;
     return d;
   },
-  _btn: function(label,onClick){
-    var b=document.createElement('button');
-    b.textContent=label;
-    b.style.cssText=[
-      'background:rgba(255,255,255,0.1)','color:#fff',
-      'border:1px solid rgba(255,255,255,0.2)','border-radius:5px',
-      'padding:3px 8px','font-size:10px','font-family:inherit',
-      'cursor:pointer','pointer-events:auto',
-      '-webkit-tap-highlight-color:transparent','white-space:nowrap',
+
+  _btn: function(label, onClick) {
+    var b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = [
+      'background:rgba(255,255,255,0.1)',
+      'color:#fff',
+      'border:1px solid rgba(255,255,255,0.2)',
+      'border-radius:5px',
+      'padding:3px 8px',
+      'font-size:10px',
+      'font-family:inherit',
+      'cursor:pointer',
+      'pointer-events:auto',
+      '-webkit-tap-highlight-color:transparent',
+      'white-space:nowrap',
     ].join(';');
-    b.addEventListener('click',function(e){ e.stopPropagation(); onClick(); });
+    b.addEventListener('click', function(e) {
+      e.stopPropagation();
+      onClick();
+    });
     return b;
   },
 };

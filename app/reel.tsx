@@ -41,7 +41,7 @@ export default function ReelScreen() {
   const [showPlaceholder, setShowPlaceholder] = useState(true);
   const [keyboardVisible, setKeyboardVisible] = useState(true);
   const [usersVisible, setUsersVisible] = useState(false);
-
+  const [keyboardSticky, setKeyboardSticky] = useState(false);
   // ─── Animated values ──────────────────────────────────────
   const keyboardFadeAnim = useRef(new Animated.Value(1)).current;
   const usersPanelAnim = useRef(new Animated.Value(0)).current;
@@ -66,14 +66,48 @@ export default function ReelScreen() {
   // ─── Keyboard helpers ─────────────────────────────────────
   const fadeKeyboard = useCallback(
     (show: boolean) => {
+      // If sticky is on — never hide
+      if (!show && keyboardSticky) return;
       Animated.timing(keyboardFadeAnim, {
         toValue: show ? 1 : 0,
         duration: 280,
         useNativeDriver: true,
       }).start(() => setKeyboardVisible(show));
     },
-    [keyboardFadeAnim],
+    [keyboardFadeAnim, keyboardSticky],
   );
+
+  // Add this handler inside ReelScreen
+  const handleToggleDev = useCallback(() => {
+    webviewRef.current?.injectJavaScript(`
+    (function(){
+      var panel = document.getElementById('__rw_panel');
+      if (!panel) {
+        // Panel not mounted yet — switch to dev mode and mount it
+        window.__rwSetEnv && window.__rwSetEnv('dev');
+        // Re-trigger DevPanel init
+        var evt = new Event('DOMContentLoaded');
+        document.dispatchEvent(evt);
+      } else {
+        // Toggle panel visibility
+        panel.style.display = panel.style.display === 'none' ? '' : 'none';
+      }
+    })();
+    true;
+  `);
+  }, []);
+
+  // ── Sticky toggle handler ──
+  const handleToggleSticky = useCallback(() => {
+    setKeyboardSticky((prev) => {
+      const next = !prev;
+      // If turning sticky on — make sure keyboard is visible
+      if (next) {
+        fadeKeyboard(true);
+      }
+      return next;
+    });
+  }, [fadeKeyboard]);
 
   // ─── Users panel helpers ──────────────────────────────────
   const toggleUsers = useCallback(() => {
@@ -136,7 +170,14 @@ export default function ReelScreen() {
     [addToast],
   );
 
-  const { connected, joined, sendUrl, sendComment, transferRemote } = useSync({
+  const {
+    connected,
+    joined,
+    registered,
+    sendUrl,
+    sendComment,
+    transferRemote,
+  } = useSync({
     username: myName,
     roomId: myRoom,
     onMessage: onSyncMessage,
@@ -219,6 +260,18 @@ export default function ReelScreen() {
     isController: name === roomController && roomRemote,
   }));
 
+  const devInfo = {
+    connected,
+    joined,
+    registered,
+    roomId: myRoom,
+    username: myName,
+    roomOwner,
+    roomController: roomController ?? null,
+    roomRemote,
+    roomUsers,
+    wsState: joined ? "joined" : connected ? "connected" : "disconnected",
+  };
   // ══════════════════════════════════════════════════════════
   return (
     <View style={styles.container}>
@@ -254,8 +307,13 @@ export default function ReelScreen() {
             joined={joined}
             usersCount={roomUsers.length}
             usersVisible={usersVisible}
+            amController={myName === roomController}
+            isRemoteRoom={roomRemote}
+            keyboardSticky={keyboardSticky}
             onBack={() => router.replace("/entrance")}
             onToggleUsers={toggleUsers}
+            onToggleSticky={handleToggleSticky}
+            onToggleDev={handleToggleDev}
           />
 
           <UsersPanel
@@ -278,6 +336,7 @@ export default function ReelScreen() {
             input={input}
             fadeAnim={keyboardFadeAnim}
             visible={keyboardVisible}
+            sticky={keyboardSticky}
             onKeyPress={handleKey}
             onSend={handleSend}
             onDismiss={() => fadeKeyboard(false)}

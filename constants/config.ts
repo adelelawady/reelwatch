@@ -4,7 +4,7 @@ export const CONFIG = {
 
   START_URL: "https://www.instagram.com/reels/DWEzH45guQJ/",
   LOGIN_URL: "https://www.instagram.com/accounts/login/",
-  REQUIRE_LOGIN: true,
+  REQUIRE_LOGIN: false, // if true, will check cookies for logged-in status and block access if not logged in
 
   // ─── DEV FLAGS ───────────────────────────────────────────
   DEV_MODE: false,

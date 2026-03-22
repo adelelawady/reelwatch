@@ -1,17 +1,18 @@
 import CustomKeyboard from "@/components/CustomKeyboard";
 import {
-    Animated,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Animated,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 type Props = {
   input: string;
   fadeAnim: Animated.Value;
   visible: boolean;
+  sticky: boolean; // ← new
   onKeyPress: (key: string) => void;
   onSend: () => void;
   onDismiss: () => void;
@@ -22,6 +23,7 @@ export function KeyboardBar({
   input,
   fadeAnim,
   visible,
+  sticky,
   onKeyPress,
   onSend,
   onDismiss,
@@ -29,8 +31,12 @@ export function KeyboardBar({
 }: Props) {
   return (
     <>
-      {/* Dismiss overlay — full screen tap when keyboard is visible */}
-      {visible && (
+      {/*
+        Dismiss overlay — only shown when:
+        - keyboard is visible
+        - AND not sticky (sticky = can't dismiss by tapping outside)
+      */}
+      {visible && !sticky && (
         <TouchableOpacity
           style={styles.dismissOverlay}
           onPress={onDismiss}
@@ -38,8 +44,11 @@ export function KeyboardBar({
         />
       )}
 
-      {/* Show strip — bottom strip tap when keyboard is hidden */}
-      {!visible && (
+      {/*
+        Show strip — only shown when keyboard is hidden AND not sticky.
+        If sticky, keyboard never hides so this never shows.
+      */}
+      {!visible && !sticky && (
         <TouchableOpacity
           style={styles.showStrip}
           onPress={onShow}
@@ -47,7 +56,7 @@ export function KeyboardBar({
         />
       )}
 
-      {/* Keyboard + input */}
+      {/* Keyboard + input bar */}
       <Animated.View
         style={[
           styles.wrapper,
