@@ -49,4 +49,15 @@ Join our community of developers creating universal apps.
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
-eas update --branch preview --message "stable"
+# Step 1 — build Android APK (free)
+
+eas build --platform android --profile preview
+
+# Step 2 — configure EAS Update
+
+npx expo install expo-updates
+eas update:configure
+
+# Step 3 — push update
+
+eas update --branch preview --message "first release"
