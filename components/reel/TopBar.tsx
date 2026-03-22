@@ -80,16 +80,16 @@ export function TopBar({
         {/* Remote badge — controller */}
         {isRemoteRoom && amController && (
           <View style={styles.remoteBadge}>
-            <Text style={styles.remoteBadgeText}>🎮 Remote</Text>
+            <Text style={styles.remoteBadgeText}>🎮</Text>
           </View>
         )}
 
-        {/* Watching badge — not controller */}
+        {/* Watching badge — not controller 
         {isRemoteRoom && !amController && (
           <View style={styles.watchingBadge}>
             <Text style={styles.watchingBadgeText}>👁 Watching</Text>
           </View>
-        )}
+        )}*/}
 
         {/* Keyboard sticky toggle */}
         <TouchableOpacity
