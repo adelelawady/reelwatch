@@ -2,404 +2,408 @@
 
 <div align="center">
 
+<img width="200" height="200" alt="ReelWatch Logo" src="https://github.com/user-attachments/assets/da97ddc3-153f-4077-a666-b0de92902fc3" />
+
 **Watch Instagram Reels together, in sync, in real time.**
 
-<h2 align="center">📱 App Screenshots</h2>
+> **⚠️ Important Note**: You'll need a **new Instagram account** to use ReelWatch. This ensures optimal performance and avoids conflicts with your main Instagram account.
 
-<p align="center">
-A quick preview of the app interface and main features.
-</p>
+**ReelWatch brings people together through shared entertainment.** Open Instagram together in real-time with live comments - watch funny reels, romantic moments, and viral content with your loved ones, no matter the distance. Perfect for:
+- 💑 **Date nights** - Share laughs and create memories together
+- 👨‍👩‍👧‍👦 **Family time** - Watch kid-friendly reels with relatives  
+- 👫 **Friend hangouts** - Enjoy trending content together
+- 🌍 **Long-distance relationships** - Stay connected through shared experiences
+
+🌐 **Try it now**: [reelwatch.adelelawady.org](https://reelwatch.adelelawady.org/) | � **Expo Go**: [Open in App](exp://u.expo.dev/be5b5a31-e1b9-4b59-aa86-4576088f0302/group/668149c3-17db-47e2-bf1d-ca7682981734) | � **Server**: [reelwatch-server](https://github.com/adelelawady/reelwatch-server)
+
+[![GitHub stars](https://img.shields.io/github/stars/adelelawady/reelwatch?style=for-the-badge&logo=github)](https://github.com/adelelawady/reelwatch/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/adelelawady/reelwatch?style=for-the-badge&logo=github)](https://github.com/adelelawady/reelwatch/network)
+[![GitHub license](https://img.shields.io/github/license/adelelawady/reelwatch?style=for-the-badge)](LICENSE)
+[![GitHub repo size](https://img.shields.io/github/repo-size/adelelawady/reelwatch?style=for-the-badge)](https://github.com/adelelawady/reelwatch)
+[![Last commit](https://img.shields.io/github/last-commit/adelelawady/reelwatch?style=for-the-badge)](https://github.com/adelelawady/reelwatch/commits/main)
+[![Issues](https://img.shields.io/github/issues/adelelawady/reelwatch?style=for-the-badge)](https://github.com/adelelawady/reelwatch/issues)
+[![React Native](https://img.shields.io/badge/React_Native-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+
+</div>
+
+## ✨ Features
+
+- 🔄 **Real-time Synchronization** - Watch Instagram Reels together with perfect sync
+- 💬 **Live Chat** - Chat with friends while watching reels
+- 🎮 **Remote Control** - Take control of playback for the entire room
+- 👥 **Multi-user Rooms** - Create and join virtual watch parties
+- 📱 **Cross-platform** - Works on iOS, Android, and Web
+- 🔐 **Instagram Integration** - Seamless authentication with Instagram
+- 🎯 **Smooth UI** - Beautiful, responsive interface with animations
+- ⚡ **WebSocket Powered** - Low-latency real-time communication
+
+## 🧠 How It Works
+
+ReelWatch creates virtual rooms where users can watch Instagram Reels together in perfect synchronization. The app uses WebSocket connections to ensure everyone sees the same content at the same time, with features like remote control, live chat, and user management.
+
+1. **Authentication** - Connect your Instagram account (optional)
+2. **Room Creation** - Create a private room or join an existing one
+3. **Real-time Sync** - All users see the same reel simultaneously
+4. **Interactive Features** - Chat, control playback, and manage participants
+
+## � Screenshots
 
 <table align="center">
   <tr>
     <td align="center">
       <b>CHAT</b><br/>
-      <img src="https://github.com/user-attachments/assets/7312a596-47bd-4d15-ab9e-4bf20cc60090" width="250"/>
+      <img src="https://github.com/user-attachments/assets/7312a596-47bd-4d15-ab9e-4bf20cc60090" width="180"/>
     </td>
     <td align="center">
       <b>CHAT</b><br/>
-      <img src="https://github.com/user-attachments/assets/97d5c631-79d2-40e0-9c14-118f8ed13336" width="250"/>
+      <img src="https://github.com/user-attachments/assets/97d5c631-79d2-40e0-9c14-118f8ed13336" width="180"/>
     </td>
     <td align="center">
       <b>SIGN NAME</b><br/>
-      <img src="https://github.com/user-attachments/assets/fb024b70-365f-49a7-a042-853df84d24e8" width="250"/>
+      <img src="https://github.com/user-attachments/assets/fb024b70-365f-49a7-a042-853df84d24e8" width="180"/>
     </td>
   </tr>
 
   <tr>
     <td align="center">
       <b>ROOMS</b><br/>
-      <img src="https://github.com/user-attachments/assets/10fc5493-5f64-4a11-9a41-680d990e4511" width="250"/>
+      <img src="https://github.com/user-attachments/assets/10fc5493-5f64-4a11-9a41-680d990e4511" width="180"/>
     </td>
     <td align="center">
       <b>BUILD IN KEYBOARD</b><br/>
-      <img src="https://github.com/user-attachments/assets/9720e198-c993-4a05-a100-7aa92aab4f90" width="250"/>
+      <img src="https://github.com/user-attachments/assets/9720e198-c993-4a05-a100-7aa92aab4f90" width="180"/>
     </td>
     <td align="center">
       <b>SHOW USER DATA [DEV]</b><br/>
-      <img src="https://github.com/user-attachments/assets/99762a61-7156-44ee-8e7e-bf1515a1a07c" width="250"/>
+      <img src="https://github.com/user-attachments/assets/99762a61-7156-44ee-8e7e-bf1515a1a07c" width="180"/>
     </td>
   </tr>
 
   <tr>
     <td align="center">
       <b>SHOW LIKES COMMENTS[DEV]</b><br/>
-      <img src="https://github.com/user-attachments/assets/0e36bf81-607f-4c6c-88db-cc505288adf0" width="250"/>
+      <img src="https://github.com/user-attachments/assets/0e36bf81-607f-4c6c-88db-cc505288adf0" width="180"/>
     </td>
     <td align="center">
       <b>DEV TOOLS PANEL</b><br/>
-      <img src="https://github.com/user-attachments/assets/06cdd2b0-4032-4937-ada7-571eddd50583" width="250"/>
+      <img src="https://github.com/user-attachments/assets/06cdd2b0-4032-4937-ada7-571eddd50583" width="180"/>
     </td>
     <td align="center">
       <b>BUILD IN KEYBOARD</b><br/>
-      <img src="https://github.com/user-attachments/assets/a7c6a48a-10c3-4cd9-aa88-963a15ff813b" width="250"/>
+      <img src="https://github.com/user-attachments/assets/a7c6a48a-10c3-4cd9-aa88-963a15ff813b" width="180"/>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center" colspan="3">
+      <b>🎬 REELWATCH IN ACTION</b><br/>
+      <video src="https://github.com/user-attachments/assets/2c2e3949-29ac-4cf1-89ce-5deae079f1e5" width="400" controls autoplay loop muted/>
     </td>
   </tr>
 </table>
 
-<p align="center">
-✨ Built with performance and simplicity in mind. More features coming soon!
-</p>
+## � Tech Stack
 
+### Frontend
+- **React Native** - Cross-platform mobile development
+- **Expo** - Development platform and toolchain
+- **TypeScript** - Type-safe JavaScript
+- **Expo Router** - File-based routing
+- **React Native WebView** - Instagram integration
+- **React Native Reanimated** - Smooth animations
+- **React Native Gesture Handler** - Touch interactions
 
+### Backend & Communication
+- **WebSocket** - Real-time bidirectional communication
+- **Node.js Server** - Room management and synchronization
+- 🖥 **Server Repo**: [reelwatch-server](https://github.com/adelelawady/reelwatch-server)
 
-
-
-[![GitHub stars](https://img.shields.io/github/stars/adelelawady/reelwatch?style=for-the-badge&logo=github&color=FFD700)](https://github.com/adelelawady/reelwatch/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/adelelawady/reelwatch?style=for-the-badge&logo=github&color=4CAF50)](https://github.com/adelelawady/reelwatch/network)
-[![GitHub issues](https://img.shields.io/github/issues/adelelawady/reelwatch?style=for-the-badge&color=f44336)](https://github.com/adelelawady/reelwatch/issues)
-[![Repo size](https://img.shields.io/github/repo-size/adelelawady/reelwatch?style=for-the-badge&color=007aff)](https://github.com/adelelawady/reelwatch)
-[![Last commit](https://img.shields.io/github/last-commit/adelelawady/reelwatch?style=for-the-badge&color=9c27b0)](https://github.com/adelelawady/reelwatch/commits)
-[![License](https://img.shields.io/github/license/adelelawady/reelwatch?style=for-the-badge&color=00bcd4)](LICENSE)
-
-[![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev)
-[![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![WebSocket](https://img.shields.io/badge/WebSocket-4CAF50?style=for-the-badge&logo=socket.io&logoColor=white)](https://github.com/adelelawady/reelwatch-server)
-
-<br/>
-
-> ReelWatch lets you and your friends watch Instagram Reels at exactly the same time — fully synchronized, with live comments, remote control, and room management. No screen sharing, no lag, no compromise.
-
-<br/>
-
-![ReelWatch Demo](https://raw.githubusercontent.com/adelelawady/reelwatch/main/assets/demo.gif)
-
-</div>
-
----
-
-## ✨ Features
-
-| Feature                | Description                                                          |
-| ---------------------- | -------------------------------------------------------------------- |
-| 🔄 **Real-time sync**  | Everyone in a room watches the same reel at the same moment          |
-| 🎮 **Remote Control**  | Room owner can lock control so only they scroll — others follow      |
-| 💬 **Live comments**   | Send messages that pop up as toasts on everyone's screen             |
-| 🏠 **Room system**     | Create or join named rooms, see who's watching                       |
-| 🔐 **Instagram login** | Uses your real Instagram session via embedded WebView                |
-| 👥 **Users panel**     | See all room members, their roles, and transfer the remote           |
-| 📱 **iOS + Android**   | Built with Expo — runs on both platforms                             |
-| ⌨️ **Custom keyboard** | Built-in keyboard that never conflicts with video playback           |
-| 🛠 **Dev panel**       | In-app injected JS debug panel for development                       |
-| 🌙 **Dark UI**         | Fully dark, minimal interface that stays out of the way of the video |
-
----
-
-## 🧠 How It Works
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        ReelWatch App                         │
-│                                                              │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
-│  │  Entrance    │───▶│  Room Lobby  │───▶│  Reel Screen │  │
-│  │  (IG Login)  │    │  (Join/Create│    │  (WebView +  │  │
-│  │              │    │   Rooms)     │    │   Sync)      │  │
-│  └──────────────┘    └──────────────┘    └──────────────┘  │
-│           │                  │                   │           │
-│           └──────────────────┴───────────────────┘           │
-│                              │                               │
-│                    WebSocket (useSync)                       │
-└─────────────────────────────────────────────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │  ReelWatch Server   │
-                    │  (Python WebSocket) │
-                    └─────────────────────┘
-```
-
-1. **Login** — The app uses an embedded WebView pointed at Instagram. Your session is saved permanently after first login.
-2. **Lobby** — Connect to the server via WebSocket, choose a display name, create or join a room.
-3. **Watch** — A second WebView loads Instagram Reels. Injected JavaScript intercepts navigation events and video state, sending them to the server.
-4. **Sync** — The server broadcasts reel URL changes to everyone in the room. Each client navigates their WebView to match.
-5. **Comments** — Text typed on the custom keyboard is broadcast as comment toasts overlaid on the video.
-
----
-
-## 🛠 Tech Stack
-
-| Layer      | Technology                                        |
-| ---------- | ------------------------------------------------- |
-| Framework  | React Native + Expo SDK 51                        |
-| Language   | TypeScript                                        |
-| Navigation | Expo Router (file-based)                          |
-| Real-time  | WebSocket (`ws://` / `wss://`)                    |
-| WebView    | `react-native-webview`                            |
-| Animations | React Native `Animated` API                       |
-| Gradients  | `expo-linear-gradient`                            |
-| State      | React hooks (`useState`, `useCallback`, `useRef`) |
-| Build      | EAS Build (Expo Application Services)             |
-
----
+### Development Tools
+- **ESLint** - Code linting and formatting
+- **TypeScript Compiler** - Type checking and compilation
+- **Metro** - JavaScript bundling
 
 ## 📦 Installation
 
 ### Prerequisites
-
-- Node.js 18+
+- Node.js 18+ 
 - npm or yarn
-- Expo CLI (`npm install -g eas-cli`)
-- A running [ReelWatch Server](https://github.com/adelelawady/reelwatch-server)
+- Expo CLI (`npm install -g @expo/cli`)
+- Expo Go app on your device (for testing)
 
-### Clone and install
+### Clone and Setup
 
 ```bash
+# Clone the repository
 git clone https://github.com/adelelawady/reelwatch.git
 cd reelwatch
+
+# Install dependencies
 npm install
-npx expo install
+
+# Start the development server
+npm start
 ```
 
----
+### Running the App
+
+```bash
+# Start with Expo CLI
+npm start
+
+# Run on specific platforms
+npm run android     # Android
+npm run ios         # iOS  
+npm run web         # Web browser
+```
 
 ## ⚙️ Configuration
 
-Edit `constants/config.ts`:
+### Server Configuration
+
+Edit `constants/config.ts` to customize your deployment:
 
 ```typescript
 export const CONFIG = {
-  SERVER_IP: "your-server-ip-or-domain", // e.g. "192.168.1.100" or "ws.myapp.com"
-  SERVER_PORT: 3001, // WebSocket server port
-  START_URL: "https://www.instagram.com/reels/xxx/",
+  SERVER_IP: "reelwatch.adelelawady.org",  // Your server domain
+  SERVER_PORT: 443,                        // WebSocket port
+  
+  START_URL: "https://www.instagram.com/reels/DWEzH45guQJ/",
   LOGIN_URL: "https://www.instagram.com/accounts/login/",
-  REQUIRE_LOGIN: true,
-
+  REQUIRE_LOGIN: false,                    // Force Instagram login
+  
   // Development flags
-  DEV_MODE: false, // true = skip login check, auto-join default room
-  DEV_DEFAULT_ROOM: "room1", // room to auto-join in DEV_MODE
+  DEV_MODE: false,
+  DEV_DEFAULT_ROOM: "room1",
   DEV_USERNAME: "devuser",
 } as const;
 ```
 
-| Variable           | Description                           | Default         |
-| ------------------ | ------------------------------------- | --------------- |
-| `SERVER_IP`        | IP or domain of your WebSocket server | `"192.168.8.5"` |
-| `SERVER_PORT`      | WebSocket server port                 | `3001`          |
-| `DEV_MODE`         | Skip Instagram login for development  | `false`         |
-| `DEV_DEFAULT_ROOM` | Auto-join this room in dev mode       | `"room1"`       |
+### Environment Variables
 
----
+Create a `.env.local` file for sensitive configuration:
+
+```env
+# Server configuration
+REACT_APP_SERVER_URL=wss://your-server.com
+REACT_APP_SERVER_PORT=443
+
+# Instagram integration (optional)
+INSTAGRAM_CLIENT_ID=your_client_id
+INSTAGRAM_CLIENT_SECRET=your_client_secret
+```
 
 ## 🚀 Usage
 
-### Development (local)
+### Basic Usage
 
-```bash
-# Start Metro bundler
-npx expo start --clear
+1. **Launch the App** - Start ReelWatch on your device
+2. **Enter Your Name** - Choose a display name for the session
+3. **Create or Join Room** - Either create a new room or join an existing one
+4. **Start Watching** - Browse and play Instagram Reels together
 
-# With tunnel (accessible from anywhere)
-npx expo start --tunnel
+### Room Management
+
+- **Create Room**: Generate a unique room ID and become the host
+- **Join Room**: Enter an existing room ID to join a watch party
+- **Remote Control**: Transfer playback control between participants
+- **Chat**: Send real-time messages to everyone in the room
+
+### Instagram Integration
+
+- **Optional Login**: Connect your Instagram account for enhanced features
+- **Browse Reels**: Access your Instagram feed and explore reels
+- **Share Content**: Easily share reels with the room
+
+## 📡 API Reference
+
+### WebSocket Events
+
+#### Client → Server
+
+```typescript
+// Register user
+{ type: "register", name: string }
+
+// Room operations
+{ type: "create_room", room: string, remote_control: boolean }
+{ type: "join", room: string }
+{ type: "leave" }
+{ type: "delete_room", room: string }
+
+// Control operations
+{ type: "transfer_remote", to: string }
+{ type: "list_rooms" }
 ```
 
-Scan the QR code with **Expo Go** on your phone.
+#### Server → Client
 
-### Production build (Android APK)
+```typescript
+// Registration
+{ type: "registered" }
 
-```bash
-# Configure EAS
-eas build:configure
+// Room information
+{ type: "rooms_list", rooms: RoomInfo[] }
+{ type: "room_state", room: RoomInfo }
 
-# Build APK
-eas build --platform android --profile preview
+// Room events
+{ type: "room_created", room: string }
+{ type: "joined", room: string }
+{ type: "room_deleted", reason: string }
+{ type: "remote_transferred", from: string, to: string }
+
+// Error handling
+{ type: "error", msg: string }
 ```
 
-Download the APK from the EAS dashboard and install directly on any Android device.
+### Room Interface
 
-### iOS (via Expo Go)
-
-Install **Expo Go** from the App Store, then scan the QR from `npx expo start --tunnel`.
-
----
+```typescript
+interface RoomInfo {
+  id: string;
+  owner: string;
+  remote_control: boolean;
+  controller: string | null;
+  users: string[];
+  user_count: number;
+  current_reel: string;
+}
+```
 
 ## 📂 Project Structure
 
 ```
 reelwatch/
-├── app/
-│   ├── _layout.tsx          # Root layout (StatusBar hidden)
-│   ├── index.tsx            # Entry redirect → /entrance
-│   ├── entrance.tsx         # Login check + room lobby
-│   └── reel.tsx             # Main reel screen (orchestrator)
-│
-├── components/
-│   ├── reel/
-│   │   ├── TopBar.tsx       # Floating buttons: back, users, sticky, dev
-│   │   ├── UsersPanel.tsx   # Slide-in users list + remote transfer
-│   │   └── KeyboardBar.tsx  # Input bar + custom keyboard
-│   ├── CustomKeyboard.tsx   # Custom on-screen keyboard
-│   ├── ReelPlaceholder.tsx  # Loading shimmer animation
-│   └── ToastLayer.tsx       # Floating comment toasts
-│
-├── hooks/
-│   ├── useSync.ts           # WebSocket sync for reel screen
-│   ├── useRooms.ts          # WebSocket room management for lobby
-│   └── useToasts.ts         # Toast notification state
-│
-├── utils/
-│   ├── injected.js          # JavaScript injected into Instagram WebView
-│   └── authInjected.ts      # Auth check + logout scripts for WebView
-│
-├── constants/
-│   └── config.ts            # App-wide configuration
-│
-├── assets/                  # Icons, splash screens
-├── app.json                 # Expo configuration
-└── eas.json                 # EAS Build configuration
+├── app/                    # Main application screens
+│   ├── _layout.tsx        # Root layout configuration
+│   ├── index.tsx          # Entry point (redirects to entrance)
+│   ├── entrance.tsx       # Login and room selection
+│   └── reel.tsx           # Main viewing experience
+├── components/            # Reusable UI components
+│   ├── reel/             # Reel-specific components
+│   │   ├── KeyboardBar.tsx
+│   │   ├── TopBar.tsx
+│   │   └── UsersPanel.tsx
+│   ├── ui/               # Base UI components
+│   └── ...               # Other shared components
+├── hooks/                # Custom React hooks
+│   ├── useRooms.ts       # WebSocket room management
+│   ├── useSync.ts        # Video synchronization
+│   ├── useAuth.ts        # Instagram authentication
+│   └── useToasts.ts      # Toast notifications
+├── constants/            # Configuration constants
+│   └── config.ts         # App configuration
+├── utils/                # Utility functions
+│   ├── authInjected.ts   # Instagram auth scripts
+│   └── injected.js       # WebView injection scripts
+├── assets/               # Static assets
+└── scripts/              # Build and development scripts
 ```
-
----
-
-## 🖼 Screenshots
-
-| Screen                                                                                                    | Description                                                           |
-| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| ![Login](https://raw.githubusercontent.com/adelelawady/reelwatch/main/assets/screenshots/1_login.png)     | **Login screen** — Instagram WebView with session persistence         |
-| ![Lobby](https://raw.githubusercontent.com/adelelawady/reelwatch/main/assets/screenshots/2_lobby.png)     | **Room lobby** — Create or join rooms, see active users               |
-| ![Reel](https://raw.githubusercontent.com/adelelawady/reelwatch/main/assets/screenshots/3_reel.png)       | **Reel screen** — Synchronized Instagram Reels with overlaid controls |
-| ![Users](https://raw.githubusercontent.com/adelelawady/reelwatch/main/assets/screenshots/4_users.png)     | **Users panel** — Room members, owner badges, remote transfer         |
-| ![Comment](https://raw.githubusercontent.com/adelelawady/reelwatch/main/assets/screenshots/5_comment.png) | **Live comments** — Toast notifications with sender names             |
-
----
-
-## 🔌 WebSocket Protocol
-
-The app communicates with the server using a simple JSON WebSocket protocol.
-
-### Key messages sent by the app
-
-```jsonc
-// Register with a display name
-{ "type": "register", "name": "Ahmed" }
-
-// Create a room
-{ "type": "create_room", "room": "movie-night", "remote_control": true }
-
-// Join a room
-{ "type": "join", "room": "movie-night" }
-
-// Broadcast current reel URL
-{ "type": "reel_url", "url": "https://instagram.com/reels/ABC123/" }
-
-// Send a comment
-{ "type": "comment", "text": "lol this is so good" }
-
-// Transfer remote control
-{ "type": "transfer_remote", "to": "Bob" }
-```
-
-> See the full protocol in [reelwatch-server](https://github.com/adelelawady/reelwatch-server#-websocket-protocol).
-
----
 
 ## 🧪 Development
 
-### Enable dev mode
+### Development Workflow
 
-Set `DEV_MODE: true` in `constants/config.ts` to:
+```bash
+# Install dependencies
+npm install
 
-- Skip Instagram login check entirely
-- Auto-join the default room on connect
-- Use `DEV_USERNAME` as display name
+# Start development server
+npm start
 
-### Enable injected JS dev panel
+# Run linter
+npm run lint
 
-Tap the `🛠` button in the top-right corner of the reel screen to toggle the in-page debug panel. It shows:
-
-- Active video state
-- Audio mute status
-- Overlay count
-- Tap/mute/play/pause controls
-- Full injection log
-
-### Switch injected JS to dev mode
-
-```javascript
-// In browser console or via injectJavaScript:
-window.__rwSetEnv("dev");
+# Reset project (clean slate)
+npm run reset-project
 ```
 
----
+### Code Quality
+
+- **TypeScript**: Full type safety throughout the codebase
+- **ESLint**: Consistent code style and error prevention
+- **Component Architecture**: Modular, reusable components
+- **Custom Hooks**: Encapsulated business logic
+
+### Testing
+
+```bash
+# Run type checking
+npx tsc --noEmit
+
+# Run linting
+npm run lint
+```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how to get started:
+We welcome contributions! Please follow these guidelines:
 
-```bash
-# Fork the repo, then:
-git clone https://github.com/your-username/reelwatch.git
-cd reelwatch
-npm install
+1. **Fork the Repository**
+   ```bash
+   git clone https://github.com/your-username/reelwatch.git
+   ```
 
-# Create a branch
-git checkout -b feature/your-feature-name
+2. **Create a Feature Branch**
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
 
-# Make your changes, then
-git commit -m "feat: add your feature"
-git push origin feature/your-feature-name
+3. **Make Your Changes**
+   - Follow the existing code style
+   - Add TypeScript types for new code
+   - Update documentation if needed
 
-# Open a Pull Request on GitHub
-```
+4. **Test Your Changes**
+   ```bash
+   npm run lint
+   npm start
+   ```
 
-### Guidelines
+5. **Submit a Pull Request**
+   - Describe your changes clearly
+   - Include screenshots if applicable
+   - Ensure all tests pass
 
-- Use TypeScript for all new code
-- Keep components small and single-purpose
-- Do not commit `DEV_MODE: true` to production
-- Test on both iOS and Android before submitting
+### Contribution Guidelines
 
----
+- 🎯 **Focus**: Bug fixes, features, and documentation
+- 📝 **Style**: Follow existing TypeScript patterns
+- 🧪 **Testing**: Ensure functionality works across platforms
+- 📖 **Docs**: Update README for API changes
 
 ## 📜 License
 
-MIT © [Adel Elawady](https://github.com/adelelawady)
-
----
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## ⭐ Support
 
-If ReelWatch saved you from watching reels alone, give it a star!
+If you find ReelWatch useful, please consider:
 
-[![GitHub stars](https://img.shields.io/github/stars/adelelawady/reelwatch?style=social)](https://github.com/adelelawady/reelwatch/stargazers)
+- ⭐ **Starring the repository** - Show your support
+- 🐛 **Reporting issues** - Help us improve
+- 💡 **Suggesting features** - Share your ideas
+- 🔄 **Forking and contributing** - Make it even better
+
+### Get Help
+
+- 🌐 **Live Demo**: [reelwatch.adelelawady.org](https://reelwatch.adelelawady.org/)
+- 📱 **Expo Go**: [Open in App](exp://u.expo.dev/be5b5a31-e1b9-4b59-aa86-4576088f0302/group/668149c3-17db-47e2-bf1d-ca7682981734)
+- 📧 **Issues**: [Create an issue](https://github.com/adelelawady/reelwatch/issues)
+- 💬 **Discussions**: [Join the conversation](https://github.com/adelelawady/reelwatch/discussions)
+- 🖥 **Server**: [reelwatch-server](https://github.com/adelelawady/reelwatch-server)
+- 📖 **Documentation**: Check the code comments and inline documentation
 
 ---
 
 <div align="center">
-Made with ❤️ by <a href="https://github.com/adelelawady">Adel Elawady</a>
-<br/>
-<a href="https://github.com/adelelawady/reelwatch-server">🖥 View Server Repository →</a>
+
+**Made with ❤️ by [Adele Lawady](https://github.com/adelelawady)**
+
+[![GitHub followers](https://img.shields.io/github/followers/adelelawady?style=social)](https://github.com/adelelawady)
+[![Twitter](https://img.shields.io/twitter/follow/adelelawady?style=social)](https://twitter.com/adelelawady)
+
 </div>
-
-# Step 1 — build Android APK (free)
-
-eas build --platform android --profile preview
-
-# Step 2 — configure EAS Update
-
-npx expo install expo-updates
-eas update:configure
-
-# Step 3 — push update
-
-eas update --branch preview --message "first release"
+      
