@@ -4,6 +4,67 @@
 
 **Watch Instagram Reels together, in sync, in real time.**
 
+<h2 align="center">📱 App Screenshots</h2>
+
+<p align="center">
+A quick preview of the app interface and main features.
+</p>
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <b>CHAT</b><br/>
+      <img src="https://github.com/user-attachments/assets/7312a596-47bd-4d15-ab9e-4bf20cc60090" width="250"/>
+    </td>
+    <td align="center">
+      <b>CHAT</b><br/>
+      <img src="https://github.com/user-attachments/assets/97d5c631-79d2-40e0-9c14-118f8ed13336" width="250"/>
+    </td>
+    <td align="center">
+      <b>SIGN NAME</b><br/>
+      <img src="https://github.com/user-attachments/assets/fb024b70-365f-49a7-a042-853df84d24e8" width="250"/>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <b>ROOMS</b><br/>
+      <img src="https://github.com/user-attachments/assets/10fc5493-5f64-4a11-9a41-680d990e4511" width="250"/>
+    </td>
+    <td align="center">
+      <b>BUILD IN KEYBOARD</b><br/>
+      <img src="https://github.com/user-attachments/assets/9720e198-c993-4a05-a100-7aa92aab4f90" width="250"/>
+    </td>
+    <td align="center">
+      <b>SHOW USER DATA [DEV]</b><br/>
+      <img src="https://github.com/user-attachments/assets/99762a61-7156-44ee-8e7e-bf1515a1a07c" width="250"/>
+    </td>
+  </tr>
+
+  <tr>
+    <td align="center">
+      <b>SHOW LIKES COMMENTS[DEV]</b><br/>
+      <img src="https://github.com/user-attachments/assets/0e36bf81-607f-4c6c-88db-cc505288adf0" width="250"/>
+    </td>
+    <td align="center">
+      <b>DEV TOOLS PANEL</b><br/>
+      <img src="https://github.com/user-attachments/assets/06cdd2b0-4032-4937-ada7-571eddd50583" width="250"/>
+    </td>
+    <td align="center">
+      <b>BUILD IN KEYBOARD</b><br/>
+      <img src="https://github.com/user-attachments/assets/a7c6a48a-10c3-4cd9-aa88-963a15ff813b" width="250"/>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+✨ Built with performance and simplicity in mind. More features coming soon!
+</p>
+
+
+
+
+
 [![GitHub stars](https://img.shields.io/github/stars/adelelawady/reelwatch?style=for-the-badge&logo=github&color=FFD700)](https://github.com/adelelawady/reelwatch/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/adelelawady/reelwatch?style=for-the-badge&logo=github&color=4CAF50)](https://github.com/adelelawady/reelwatch/network)
 [![GitHub issues](https://img.shields.io/github/issues/adelelawady/reelwatch?style=for-the-badge&color=f44336)](https://github.com/adelelawady/reelwatch/issues)
