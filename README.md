@@ -9,13 +9,10 @@
 
 > **⚠️ Important Note**: You'll need a **new Instagram account** to use ReelWatch. This ensures optimal performance and avoids conflicts with your main Instagram account.
 
-**ReelWatch brings people together through shared entertainment.** Open Instagram together in real-time with live comments - watch funny reels, romantic moments, and viral content with your loved ones, no matter the distance. Perfect for:
-- 💑 **Date nights** - Share laughs and create memories together
-- 👨‍👩‍👧‍👦 **Family time** - Watch kid-friendly reels with relatives  
-- 👫 **Friend hangouts** - Enjoy trending content together
-- 🌍 **Long-distance relationships** - Stay connected through shared experiences
+**ReelWatch brings people together through shared entertainment.** Open Instagram together in real-time with live comments - watch funny reels, romantic moments, and viral content with your loved ones, no matter the distance.
 
-🌐 **Try it now**: [reelwatch.adelelawady.org](https://reelwatch.adelelawady.org/) | � **Expo Go**: [Open in App](exp://u.expo.dev/be5b5a31-e1b9-4b59-aa86-4576088f0302/group/668149c3-17db-47e2-bf1d-ca7682981734) | � **Server**: [reelwatch-server](https://github.com/adelelawady/reelwatch-server)
+
+🌐 **Try it now**: [reelwatch.adelelawady.org](https://reelwatch.adelelawady.org/)  | 🌐 **Server**: [reelwatch-server](https://github.com/adelelawady/reelwatch-server)
 
 [![GitHub stars](https://img.shields.io/github/stars/adelelawady/reelwatch?style=for-the-badge&logo=github)](https://github.com/adelelawady/reelwatch/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/adelelawady/reelwatch?style=for-the-badge&logo=github)](https://github.com/adelelawady/reelwatch/network)
@@ -29,16 +26,7 @@
 
 </div>
 
-## ✨ Features
 
-- 🔄 **Real-time Synchronization** - Watch Instagram Reels together with perfect sync
-- 💬 **Live Chat** - Chat with friends while watching reels
-- 🎮 **Remote Control** - Take control of playback for the entire room
-- 👥 **Multi-user Rooms** - Create and join virtual watch parties
-- 📱 **Cross-platform** - Works on iOS, Android, and Web
-- 🔐 **Instagram Integration** - Seamless authentication with Instagram
-- 🎯 **Smooth UI** - Beautiful, responsive interface with animations
-- ⚡ **WebSocket Powered** - Low-latency real-time communication
 
 ## 🧠 How It Works
 
@@ -109,17 +97,20 @@ ReelWatch creates virtual rooms where users can watch Instagram Reels together i
     <td align="center" colspan="3">
       <b>🎬 REELWATCH IN ACTION</b><br/>
       <video src="https://github.com/user-attachments/assets/2c2e3949-29ac-4cf1-89ce-5deae079f1e5" width="400" controls autoplay loop muted/>
-      <img src="https://github.com/user-attachments/assets/a7c6a48a-10c3-4cd9-aa88-963a15ff813b" width="180"/>
-    </td>
-  </tr>
-
-  <tr>
-    <td align="center" colspan="3">
-      <b>🎬 REELWATCH IN ACTION</b><br/>
-      <video src="https://github.com/user-attachments/assets/2c2e3949-29ac-4cf1-89ce-5deae079f1e5" width="400" controls autoplay loop muted/>
     </td>
   </tr>
 </table>
+
+## ✨ Features
+
+- 🔄 **Real-time Synchronization** - Watch Instagram Reels together with perfect sync
+- 💬 **Live Chat** - Chat with friends while watching reels
+- 🎮 **Remote Control** - Take control of playback for the entire room
+- 👥 **Multi-user Rooms** - Create and join virtual watch parties
+- 📱 **Cross-platform** - Works on iOS, Android, and Web
+- 🔐 **Instagram Integration** - Seamless authentication with Instagram
+- 🎯 **Smooth UI** - Beautiful, responsive interface with animations
+- ⚡ **WebSocket Powered** - Low-latency real-time communication
 
 ## � Tech Stack
 
