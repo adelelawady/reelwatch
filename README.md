@@ -44,16 +44,13 @@ ReelWatch creates virtual rooms where users can watch Instagram Reels together i
     <td align="center">
       <b>CHAT</b><br/>
       <img src="https://github.com/user-attachments/assets/7312a596-47bd-4d15-ab9e-4bf20cc60090" width="180"/>
-      <img src="https://github.com/user-attachments/assets/7312a596-47bd-4d15-ab9e-4bf20cc60090" width="180"/>
     </td>
     <td align="center">
       <b>CHAT</b><br/>
       <img src="https://github.com/user-attachments/assets/97d5c631-79d2-40e0-9c14-118f8ed13336" width="180"/>
-      <img src="https://github.com/user-attachments/assets/97d5c631-79d2-40e0-9c14-118f8ed13336" width="180"/>
     </td>
     <td align="center">
       <b>SIGN NAME</b><br/>
-      <img src="https://github.com/user-attachments/assets/fb024b70-365f-49a7-a042-853df84d24e8" width="180"/>
       <img src="https://github.com/user-attachments/assets/fb024b70-365f-49a7-a042-853df84d24e8" width="180"/>
     </td>
   </tr>
@@ -62,16 +59,13 @@ ReelWatch creates virtual rooms where users can watch Instagram Reels together i
     <td align="center">
       <b>ROOMS</b><br/>
       <img src="https://github.com/user-attachments/assets/10fc5493-5f64-4a11-9a41-680d990e4511" width="180"/>
-      <img src="https://github.com/user-attachments/assets/10fc5493-5f64-4a11-9a41-680d990e4511" width="180"/>
     </td>
     <td align="center">
       <b>BUILD IN KEYBOARD</b><br/>
       <img src="https://github.com/user-attachments/assets/9720e198-c993-4a05-a100-7aa92aab4f90" width="180"/>
-      <img src="https://github.com/user-attachments/assets/9720e198-c993-4a05-a100-7aa92aab4f90" width="180"/>
     </td>
     <td align="center">
       <b>SHOW USER DATA [DEV]</b><br/>
-      <img src="https://github.com/user-attachments/assets/99762a61-7156-44ee-8e7e-bf1515a1a07c" width="180"/>
       <img src="https://github.com/user-attachments/assets/99762a61-7156-44ee-8e7e-bf1515a1a07c" width="180"/>
     </td>
   </tr>
@@ -80,11 +74,9 @@ ReelWatch creates virtual rooms where users can watch Instagram Reels together i
     <td align="center">
       <b>SHOW LIKES COMMENTS[DEV]</b><br/>
       <img src="https://github.com/user-attachments/assets/0e36bf81-607f-4c6c-88db-cc505288adf0" width="180"/>
-      <img src="https://github.com/user-attachments/assets/0e36bf81-607f-4c6c-88db-cc505288adf0" width="180"/>
     </td>
     <td align="center">
       <b>DEV TOOLS PANEL</b><br/>
-      <img src="https://github.com/user-attachments/assets/06cdd2b0-4032-4937-ada7-571eddd50583" width="180"/>
       <img src="https://github.com/user-attachments/assets/06cdd2b0-4032-4937-ada7-571eddd50583" width="180"/>
     </td>
     <td align="center">
