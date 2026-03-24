@@ -2,7 +2,6 @@
 
 <div align="center">
 
-<img width="200" height="200" alt="ReelWatch Logo" src="https://github.com/user-attachments/assets/da97ddc3-153f-4077-a666-b0de92902fc3" />
 
 <img width="200" height="200" alt="ReelWatch Logo" src="https://github.com/user-attachments/assets/da97ddc3-153f-4077-a666-b0de92902fc3" />
 
