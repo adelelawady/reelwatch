@@ -632,11 +632,6 @@ If you find ReelWatch useful, please consider:
 
 <div align="center">
 
-**Made with ❤️ by [Adele Lawady](https://github.com/adelelawady)**
-
-[![GitHub followers](https://img.shields.io/github/followers/adelelawady?style=social)](https://github.com/adelelawady)
-[![Twitter](https://img.shields.io/twitter/follow/adelelawady?style=social)](https://twitter.com/adelelawady)
-
 
 **Made with ❤️ by [Adele Lawady](https://github.com/adelelawady)**
 
